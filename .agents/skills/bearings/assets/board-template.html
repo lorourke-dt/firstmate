@@ -78,6 +78,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 body {
   font-family: var(--bb-font);
   font-size: var(--bb-fs-body);
@@ -221,7 +222,6 @@ a:hover { color: var(--bb-accent-strong); }
   background: var(--bb-surface); border: var(--bb-hairline) solid var(--bb-rule);
   border-radius: var(--bb-radius-card); box-shadow: var(--bb-shadow-card);
 }
-.bb-decision[hidden] { display: none; }
 .bb-decision__top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .bb-decision__repo { font-weight: 500; font-size: var(--bb-fs-meta); color: var(--bb-muted); }
 .bb-decision__title { margin: 0; font-weight: 600; font-size: var(--bb-fs-title); line-height: 1.3; letter-spacing: -0.01em; }
@@ -286,7 +286,6 @@ a:hover { color: var(--bb-accent-strong); }
 .bb-group__head:focus-visible { outline: none; box-shadow: var(--bb-focus); }
 .bb-group__name { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .bb-group__head:hover .bb-eyebrow { color: var(--bb-accent-strong); }
-.bb-group__body[hidden] { display: none; }
 .bb-chev { flex: none; color: var(--bb-muted); transition: transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1); }
 .bb-chev svg { width: 14px; height: 14px; display: block; }
 .is-open > .bb-group__head .bb-chev, .bb-row.is-open .bb-chev { transform: rotate(90deg); }
@@ -321,7 +320,6 @@ a:hover { color: var(--bb-accent-strong); }
   padding: 2px 0 14px 24px; display: flex; flex-direction: column; gap: 10px;
   font-size: var(--bb-fs-sm); color: var(--bb-body);
 }
-.bb-panel[hidden] { display: none; }
 .bb-panel__facts { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 4px 12px; }
 .bb-panel__foot { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding-top: 4px; }
 .bb-panel__foot .fm-btn { margin-left: auto; }
@@ -336,7 +334,6 @@ a:hover { color: var(--bb-accent-strong); }
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 16px 0 0; border-top: var(--bb-hairline) solid var(--bb-rule); margin-top: 16px;
 }
-.bb-actions[hidden] { display: none; }
 .bb-actions__count {
   flex: 1 1 auto; font-weight: 600; font-size: var(--bb-fs-meta);
   letter-spacing: var(--bb-ls-badge); text-transform: uppercase; color: var(--bb-muted);
@@ -473,6 +470,12 @@ __FM_BEARINGS_BOARD_DATA__
   /* Fail closed: a board with unreadable or wrong-schema data says so plainly
      instead of rendering an empty page that looks like an empty fleet. */
   function renderBoardError(msg) {
+    var band = document.getElementById("bb-stats");
+    if (band) { band.innerHTML = ""; }
+    var bandDate = document.getElementById("bb-band-date");
+    if (bandDate) { bandDate.textContent = "-"; }
+    var strip = document.querySelector(".bb-strip");
+    if (strip) { strip.hidden = true; }
     var main = document.querySelector(".bb-main");
     main.innerHTML = "";
     var card = document.createElement("div");

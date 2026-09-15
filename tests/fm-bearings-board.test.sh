@@ -400,6 +400,31 @@ test_build_refuses_a_theme_or_logo_that_cannot_be_inlined_safely() {
   set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
   [ "$rc" -ne 0 ] || fail "a logo carrying a script was accepted"
   assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  # Script tags are not the only way an inlined SVG runs in the board document,
+  # which also holds the payload and the answer-queueing bridge.
+  printf '<svg onload="alert(1)"><path d="M0 0"/></svg>\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying an inline event handler was accepted"
+  assert_contains "$out" "event handler" "the handler refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg><image href="x"\n onerror="alert(1)"/></svg>\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying a nested event handler was accepted"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg><rect/><animate attributeName="href" to="javascript_url"/></svg>\n' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying a SMIL animation element was accepted"
+  assert_contains "$out" "animation element" "the animation refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg><set attributeName="href" to="x"/></svg>\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying a SMIL set element was accepted"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
   pass "build refuses a theme or logo that cannot be inlined safely"
 }
 

@@ -100,7 +100,9 @@
 #   $FM_HOME/config/board-logo.svg    an SVG inlined in place of the logo slot,
 #                                     beside the wordmark. Refused unless it is
 #                                     an <svg> element, and refused when it
-#                                     carries a script or a javascript: URL.
+#                                     carries a script, a javascript: URL, an
+#                                     inline on* event handler, or a SMIL
+#                                     animation element that can set attributes.
 #
 # Either file absent is normal: the slot is replaced by nothing and the tracked
 # neutral default stands. docs/configuration.md owns the operator-facing
@@ -408,6 +410,12 @@ board_logo_svg() {  # prints the logo SVG, or nothing
     || fail "board logo is not an SVG element: $file"
   if grep -qiE '<script|javascript:' "$file"; then
     fail "board logo carries a script or javascript: URL: $file"
+  fi
+  if grep -qiE '(^|[[:space:]"'"'"'/])on[a-z]+[[:space:]]*=' "$file"; then
+    fail "board logo carries an inline event handler attribute: $file"
+  fi
+  if grep -qiE '<(animate|animateTransform|set)[[:space:]/>]' "$file"; then
+    fail "board logo carries a SMIL animation element (animate, animateTransform or set): $file"
   fi
   cat "$file"
 }

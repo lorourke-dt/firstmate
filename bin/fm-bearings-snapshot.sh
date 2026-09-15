@@ -414,12 +414,17 @@ MODEL=$(printf '%s' "$SNAP" | jq \
            + ($base | fit($context_n - $title_n)))
         end
       end;
+  def body_context:
+    ((.body_lines // [])
+     | map(select(test("^(Captain hold set:|Resolution recorded by fm-(captain|decision)-hold\\.$|Decision digest:|Resolution mode:|Routed identities:|local main$)") | not))
+     | join(" "))
+    | if . == "" then null else . end;
   def as_gate($owner):
     {id, title:(.title | trunc(60)),
      blocked_by:((.unresolved_blocker_ids // []) | if length > 0 then join(",") else "-" end | trunc(120)),
      reason:(hold_gate_reason | trunc(40)), owner:$owner,
      task_kind:(if .kind == "ship" or .kind == "scout" then .kind else null end),
-     context:((.body_excerpt // null) | if . == null then null else trunc(160) end),
+     context:(body_context | if . == null then null else trunc(160) end),
      filed:((.since // null) | trunc(40))};
   def round_robin_landed($n):
     . as $groups

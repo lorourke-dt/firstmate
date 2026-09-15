@@ -108,8 +108,8 @@ Compose the payload from the same snapshot with the same ranking judgment as the
 - Every Charted Next row for real queued work copies the snapshot gate's `task_kind` into `task_kind`, either `"ship"` or `"scout"`, which the board renders as the row's kind badge and as the "Delivers" line in the row's expanded panel.
   Omit it, or pass null, when the backlog item declares no kind, and the board then shows no kind badge and no Delivers line rather than guessing one.
   A warning row never carries it.
-- A Charted Next row MAY carry `context`, a plain-text line from the backlog item's own body that the expanded panel shows beside the filed date, project and blocker.
-  Copy the snapshot gate's `context`; omit it or pass null when the item has no body, and never compose one from elsewhere.
+- A Charted Next row MAY carry `context`, a plain-text line of the backlog item's own prose that the expanded panel shows beside the filed date, project and blocker.
+  Copy the snapshot gate's `context`, which already excludes the body's bookkeeping lines (hold stamps, resolution records, the local-main note); omit it or pass null when the item has no such prose, and never compose one from elsewhere.
 - Every Charted Next row copies the snapshot gate's durable filed date into `filed`, and the board orders the section by it, newest filed first.
   Follow `bin/fm-bearings-board.sh`'s payload contract for the accepted format.
   Omit it or pass null for a row with no durable filed date - the main-inventory or return-catchup warning, an unavailable secondmate home, or a queued row filed before dates were recorded - and the board keeps those rows in payload order after every dated row.
