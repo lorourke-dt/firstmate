@@ -2550,6 +2550,18 @@ test_gate_rows_carry_the_task_kind_and_body_context() {
     The DROP feed already holds them; the suppression feed does not.
 - [ ] scout-gate - Investigate the dropped download (repo: firstmate) (kind: scout) (since 2026-07-09)
 - [ ] kindless-gate - No declared kind (repo: firstmate) (since 2026-07-08)
+- [ ] stamped-gate - Keep the ingest guard (repo: firstmate) (kind: ship) (since 2026-07-07)
+    Captain hold set: 2026-07-07T09:00:00Z
+
+    Rate-limit the ingest path before the next import window.
+- [ ] released-gate - Ship the retry backoff (repo: firstmate) (kind: ship) (since 2026-07-06)
+    Resolution recorded by fm-captain-hold.
+    Decision digest: 4f2a9c1e7b0d3856
+    Resolution mode: released
+
+    Captain decision:
+    Go ahead, but hold it until the Friday window.
+    Add the exponential backoff to the retry path.
 
 ## Done
 EOF
@@ -2561,7 +2573,18 @@ EOF
       and (.gates | any(.id == "scout-gate" and .task_kind == "scout" and .context == null))
       and (.gates | any(.id == "kindless-gate" and .task_kind == null and .context == null))
   ' >/dev/null || fail "gate rows are missing their task kind or body context: $json"
-  pass "gate rows carry the backlog task kind and the item body as context"
+  # Context is the captain-facing prose of the item, so the hold stamp is not
+  # part of it and a captain resolution record suppresses it outright: the
+  # record has no terminator once the snapshot drops its blank-line delimiter,
+  # so any prose kept beside it would arrive with the record still attached.
+  printf '%s' "$json" | jq -e '
+    (.gates | any(.id == "stamped-gate"
+      and .context == "Rate-limit the ingest path before the next import window."))
+  ' >/dev/null || fail "a hold-stamped item did not show its prose alone as context: $json"
+  printf '%s' "$json" | jq -e '
+    (.gates | any(.id == "released-gate" and .context == null))
+  ' >/dev/null || fail "a released item leaked its resolution record into context: $json"
+  pass "gate rows carry the backlog task kind and the item prose, never its bookkeeping, as context"
 }
 
 test_mixed_secondmate_roles_partial_state_and_captain_readiness() {
