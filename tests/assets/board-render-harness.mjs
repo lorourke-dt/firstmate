@@ -112,6 +112,8 @@ new Function(script)();
 
 const badgesOf = (row) =>
   row.children
+    // charted rows keep their badges in one .bb-row__badges wrapper
+    .flatMap((c) => (c.className.includes("bb-row__badges") ? c.children : [c]))
     .filter((c) => c.className.includes("fm-badge"))
     .map((c) => ({
       // fm-badge--sm is a size modifier; the tone is the other one.

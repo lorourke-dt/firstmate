@@ -309,8 +309,7 @@ a:hover { color: var(--bb-accent-strong); }
 }
 .bb-charted .bb-row__summary:hover .bb-row__title { color: var(--bb-accent); }
 .bb-charted .bb-row__sub { padding: 0 0 10px 24px; font-size: var(--bb-fs-sm); color: var(--bb-body); }
-.bb-charted .bb-row > .fm-badge { grid-column: 3; margin-top: 12px; }
-.bb-charted .bb-row > .fm-badge ~ .fm-badge { margin-left: 6px; }
+.bb-charted .bb-row__badges { grid-column: 3; grid-row: 1; display: flex; gap: 6px; margin-top: 12px; }
 .bb-pick { accent-color: var(--bb-accent); width: 18px; height: 18px; margin: 14px 0 0; flex: none; grid-column: 1; }
 .bb-pick-spacer {
   width: 18px; height: 18px; margin-top: 14px; border-radius: 3px;
@@ -390,7 +389,7 @@ __FM_BEARINGS_BOARD_LOGO__
     <span class="bb-eyebrow">Underway</span>
     <span class="bb-meta" id="bb-underway-sub"></span>
   </div>
-  <div class="bb-tiles bb-rows" id="bb-underway"></div>
+  <div class="bb-tiles" id="bb-underway"></div>
 </section>
 
 <main class="bb-main">
@@ -941,8 +940,10 @@ __FM_BEARINGS_BOARD_DATA__
         setRowOpen(!row.classList.contains("is-open"));
       });
 
-      if (t.task_kind) row.appendChild(badge(t.task_kind === "scout" ? "outline" : "solid", t.task_kind, true));
-      if (t.reason) row.appendChild(badge("warn", "waiting", true));
+      var badges = el("div", "bb-row__badges");
+      if (t.task_kind) badges.appendChild(badge(t.task_kind === "scout" ? "outline" : "solid", t.task_kind, true));
+      if (t.reason) badges.appendChild(badge("warn", "waiting", true));
+      row.appendChild(badges);
 
       body.appendChild(row);
 
