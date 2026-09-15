@@ -268,7 +268,8 @@ A home gives the board its own look with two optional local, gitignored files un
 - `config/board-theme.css` is inlined after the tracked defaults, so redefining the board's `:root` custom properties is all it takes and no layout rule needs restating.
   It is refused when it carries `</style`, which would end the theme block early.
 - `config/board-logo.svg` is inlined in place of the board's logo slot, beside the "Bearings" wordmark.
-  It is refused unless it is an `<svg>` element, and refused when it carries a script, a `javascript:` URL, an inline `on*` event handler, or a SMIL animation element that can set attributes (`animate`, `animateTransform`, `set`).
+  It is refused unless it is an `<svg>` element, and refused when it carries a script, a `javascript:` URL, an inline `on*` event handler, an HTML-embedding element (`foreignObject`, `iframe`, `embed`, `object`), or a SMIL animation element that can set attributes (`animate`, `animateTransform`, `set`).
+  Each is matched across line breaks and through HTML character references, so neither a pretty-printer's layout nor an entity-encoded spelling changes the answer.
   The refusal names what was found; the file is never silently rewritten.
 
 Either file absent is normal and is not a warning: that slot is replaced by nothing and the tracked neutral default stands.

@@ -442,6 +442,35 @@ test_build_refuses_a_theme_or_logo_that_cannot_be_inlined_safely() {
   assert_contains "$out" "animation element" "the animation refusal did not say why: $out"
   assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
 
+  # HTML smuggled through SVG still runs in the board document, and a browser
+  # resolves character references before it decides a URL's scheme.
+  printf '%s\n' '<svg><foreignObject><iframe srcdoc="&lt;script&gt;parent.alert(1)&lt;/script&gt;"/></foreignObject></svg>' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo embedding an HTML srcdoc iframe was accepted"
+  assert_contains "$out" "HTML-embedding element" "the embedding refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '%s\n' '<svg><a href="&#106;avascript:alert(1)"><rect/></a></svg>' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo with an entity-encoded javascript: URL was accepted"
+  assert_contains "$out" "javascript:" "the javascript refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '%s\n' '<svg><a href="java&NewLine;script:alert(1)"><rect/></a></svg>' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo whose javascript: URL is split by a character reference was accepted"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '%s\n' '<svg><text>Tom &amp; Jerry&#39;s</text><path d="M0 0"/></svg>' \
+    > "$home/config/board-logo.svg"
+  run_board "$home" build "$data" >/dev/null \
+    || fail "a logo whose only entities are ordinary text was refused"
+  assert_present "$home/.lavish/bearings-board.html" "the accepted logo produced no board"
+  rm -f "$home/.lavish/bearings-board.html"
+
   printf '<svg\n  xmlns="http://www.w3.org/2000/svg"\n  viewBox="0 0 10 10">\n  <title>house mark</title>\n</svg>\n' \
     > "$home/config/board-logo.svg"
   run_board "$home" build "$data" >/dev/null \

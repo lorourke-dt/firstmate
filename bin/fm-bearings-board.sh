@@ -101,8 +101,10 @@
 #                                     beside the wordmark. Refused unless it is
 #                                     an <svg> element, and refused when it
 #                                     carries a script, a javascript: URL, an
-#                                     inline on* event handler, or a SMIL
-#                                     animation element that can set attributes.
+#                                     inline on* event handler, an HTML-embedding
+#                                     element, or a SMIL animation element that
+#                                     can set attributes - each matched across
+#                                     line breaks and character references.
 #
 # Either file absent is normal: the slot is replaced by nothing and the tracked
 # neutral default stands. docs/configuration.md owns the operator-facing
@@ -404,15 +406,29 @@ board_theme_css() {  # prints the theme CSS, or nothing
 }
 
 board_logo_svg() {  # prints the logo SVG, or nothing
-  local file="$FM_HOME/config/board-logo.svg" flat
+  local file="$FM_HOME/config/board-logo.svg" flat decoded
   [ -f "$file" ] && [ ! -L "$file" ] || return 0
-  # An exporter is free to break a tag or an attribute across lines, and the
-  # browser reads it the same either way, so every refusal below matches the
-  # file with its newlines folded to spaces rather than line by line.
+  # Every refusal below is matched against two views of the file, because the
+  # browser reads both: one with line breaks folded to spaces, since an
+  # exporter may break a tag or an attribute across lines, and one with
+  # character references resolved and the tab/CR/LF a URL parser discards
+  # removed, since `&#106;avascript:` and `java&NewLine;script:` both reach it
+  # as a javascript: scheme.
   flat=$(tr '\n\r' '  ' < "$file") || fail "board logo could not be read: $file"
-  logo_carries() { printf '%s' "$flat" | grep -qiE "$1"; }
+  decoded=$(perl -0pe '
+    BEGIN { %n = (colon => ":", Tab => "\t", NewLine => "\n",
+                  lt => "<", gt => ">", sol => "/"); }
+    s/&#([0-9]+);?/chr($1)/ge;
+    s/&#[xX]([0-9a-fA-F]+);?/chr(hex($1))/ge;
+    s/&([a-zA-Z]+);/exists $n{$1} ? $n{$1} : "&$1;"/ge;
+    tr Z\t\n\rZZd;
+  ' < "$file") || fail "board logo could not be decoded: $file"
+  logo_carries() { printf '%s\n%s' "$flat" "$decoded" | grep -qiE "$1"; }
   logo_carries '<[[:space:]]*svg[[:space:]/>]' \
     || fail "board logo is not an SVG element: $file"
+  if logo_carries '<[[:space:]]*(foreignObject|iframe|embed|object)[[:space:]/>]'; then
+    fail "board logo carries an HTML-embedding element (foreignObject, iframe, embed or object), which runs its content inside the board: $file"
+  fi
   if logo_carries '<[[:space:]]*script[[:space:]/>]|javascript:'; then
     fail "board logo carries a script or javascript: URL: $file"
   fi
