@@ -58,8 +58,8 @@ SH
 
 # Build the board from <underway-json> plus <charted-json> and return what the
 # renderer produced.
-render_board() {  # <home> <underway-json> <charted-json> [charted_more] [charted_warning_more]
-  local home=$1 underway=$2 charted=$3 more=${4:-0} warning_more=${5:-0} data="$1/payload.json"
+render_board() {  # <home> <underway-json> <charted-json> [charted_more] [charted_warning_more] [steps-json]
+  local home=$1 underway=$2 charted=$3 more=${4:-0} warning_more=${5:-0} steps=${6:-[]} data="$1/payload.json"
   jq -n --argjson underway "$underway" --argjson charted "$charted" \
     --argjson more "$more" --argjson warning_more "$warning_more" '{
     schema:"fm-bearings-board.v1", home:"render-home", generated:"2026-08-26T00:00Z",
@@ -69,8 +69,23 @@ render_board() {  # <home> <underway-json> <charted-json> [charted_more] [charte
     FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
     FM_PROCEVENT_CLAIM_ROOT="$home/procevent-claims" \
     "$BOARD" build "$data" >/dev/null || fail "the board did not build"
-  node "$HARNESS" "$home/.lavish/bearings-board.html" \
+  node "$HARNESS" "$home/.lavish/bearings-board.html" "$steps" \
     || fail "the built board could not be rendered"
+}
+
+# Build a two-row queue and replay <steps-json> against the board's own
+# handlers, returning what the renderer produced plus what it queued.
+render_removal_steps() {  # <home> <steps-json>
+  render_board "$1" '[]' '[
+    {"id":"alpha-1","repo":"sample","title":"Alpha","reason":"","dispatchable":true},
+    {"id":"beta-2","repo":"sample","title":"Beta","reason":"","dispatchable":true}
+  ]' 0 0 "$2"
+}
+
+# The one remove.charted answer the captain would actually send.
+queued_removal() {  # <render-json>
+  printf '%s' "$1" | jq -r '[.queued[] | select(.queueKey == "remove.charted")] as $q
+    | if ($q | length) == 1 then $q[0].answer else "expected exactly one, got \($q | length)" end'
 }
 
 # Build the board from <charted-json> alone and return what the renderer produced.
@@ -167,6 +182,62 @@ test_an_omitted_kind_keeps_the_existing_queued_rendering() {
       and (.charted[1].badges == [])
   ' >/dev/null || fail "an omitted kind changed the existing queued badges: $out"
   pass "an omitted kind renders exactly as queued work always did"
+}
+
+# --- removing from the queue -------------------------------------------------
+# Removal is the board's one destructive path: the queued remove.charted answer
+# is the only thing that decides which backlog items firstmate drops, so every
+# assertion below is on that answer rather than on board-local state.
+
+test_striking_a_row_queues_nothing_until_the_captain_sends() {
+  local home out
+  home=$(make_home remove-unsent)
+  out=$(render_removal_steps "$home" '[{"op":"remove","id":"alpha-1"}]')
+  printf '%s' "$out" | jq -e '.queued == []' >/dev/null \
+    || fail "striking a row queued an answer before the captain sent it: $out"
+  pass "striking a row queues nothing until the captain sends"
+}
+
+test_queue_removals_hands_firstmate_every_struck_id() {
+  local home out
+  home=$(make_home remove-send)
+  out=$(render_removal_steps "$home" '[
+    {"op":"remove","id":"alpha-1"},{"op":"remove","id":"beta-2"},{"op":"queue"}]')
+  [ "$(queued_removal "$out")" = "alpha-1,beta-2" ] \
+    || fail "the queued removal did not carry both struck ids: $out"
+  pass "queue removals hands firstmate every struck id"
+}
+
+test_undo_after_queueing_retracts_the_id_from_the_queued_removal() {
+  local home out
+  home=$(make_home remove-undo-after-send)
+  out=$(render_removal_steps "$home" '[
+    {"op":"remove","id":"alpha-1"},{"op":"remove","id":"beta-2"},{"op":"queue"},
+    {"op":"undo","id":"beta-2"}]')
+  [ "$(queued_removal "$out")" = "alpha-1" ] \
+    || fail "undo left the already-queued removal carrying the retracted id: $out"
+  pass "undo after queueing retracts the id from the queued removal"
+}
+
+test_undoing_every_removal_after_queueing_queues_an_explicit_nothing() {
+  local home out
+  home=$(make_home remove-undo-all)
+  out=$(render_removal_steps "$home" '[
+    {"op":"remove","id":"alpha-1"},{"op":"queue"},{"op":"undo","id":"alpha-1"}]')
+  [ "$(queued_removal "$out")" = "" ] \
+    || fail "emptying the removal list left an id queued for deletion: $out"
+  pass "undoing every removal after queueing queues an explicit nothing"
+}
+
+test_editing_the_list_after_queueing_ends_on_the_last_list() {
+  local home out
+  home=$(make_home remove-re-edit)
+  out=$(render_removal_steps "$home" '[
+    {"op":"remove","id":"alpha-1"},{"op":"remove","id":"beta-2"},{"op":"queue"},
+    {"op":"undo","id":"alpha-1"},{"op":"remove","id":"alpha-1"}]')
+  [ "$(queued_removal "$out")" = "beta-2,alpha-1" ] \
+    || fail "the queued removal did not settle on the captain's last list: $out"
+  pass "editing the list after queueing ends on the last list"
 }
 
 test_an_underway_row_leads_with_the_task_name_and_keeps_its_run_status() {
@@ -335,3 +406,8 @@ test_a_queue_row_badges_its_task_kind_and_opens_a_detail_panel
 test_a_queue_row_without_a_task_kind_shows_no_kind_badge
 test_queue_rows_group_by_project
 test_a_warning_row_is_flat_with_no_panel_or_removal
+test_striking_a_row_queues_nothing_until_the_captain_sends
+test_queue_removals_hands_firstmate_every_struck_id
+test_undo_after_queueing_retracts_the_id_from_the_queued_removal
+test_undoing_every_removal_after_queueing_queues_an_explicit_nothing
+test_editing_the_list_after_queueing_ends_on_the_last_list

@@ -2,11 +2,17 @@
 // shim and print what the renderer actually produced, so board behavior is
 // asserted through the real template rather than by reading its source.
 //
-// Usage: node board-render-harness.mjs <built-board.html>
+// Usage: node board-render-harness.mjs <built-board.html> [steps-json]
+// `steps-json` is a JSON array of captain gestures replayed against the real
+// handlers after the render, each one of:
+//   {"op":"remove","id":"<task-id>"} click that row's "Remove from queue"
+//   {"op":"undo","id":"<task-id>"}   click that row's "Undo"
+//   {"op":"queue"}                   click "Queue removals"
 // Prints one JSON document:
 //   { stats:[{n,label}], underway:[{title,sub,badges}],
 //     charted:[{title,sub,badges,pickable,facts,removable}],
-//     groups:[{name,meta,rows}], empty, more, error }
+//     groups:[{name,meta,rows}], empty, more, error,
+//     queued:[{queueKey,question,answer,prompt}] }
 import { readFileSync } from "node:fs";
 
 const html = readFileSync(process.argv[2], "utf8");
@@ -42,7 +48,12 @@ class Node {
   appendChild(n) { n.parentNode = this; this.children.push(n); return n; }
   setAttribute(k, v) { this.attributes[k] = v; }
   getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attributes, k) ? this.attributes[k] : null; }
-  addEventListener() {}
+  addEventListener(type, fn) {
+    (this._listeners ??= new Map()).set(type, (this._listeners.get(type) ?? []).concat(fn));
+  }
+  dispatch(type) {
+    for (const fn of this._listeners?.get(type) ?? []) fn.call(this, { type, target: this });
+  }
   querySelectorAll(sel) {
     const want = sel.replace(/^\./, "").replace(/:checked$/, "");
     const checkedOnly = sel.endsWith(":checked");
@@ -83,7 +94,17 @@ globalThis.document = {
     return byId.get(id);
   },
 };
-globalThis.window = {};
+const queuedPrompts = [];
+globalThis.window = {
+  lavish: {
+    queuePrompt(prompt, options) {
+      const key = options?.queueKey ?? "";
+      const entry = { prompt, options };
+      const at = key ? queuedPrompts.findIndex((q) => (q.options?.queueKey ?? "") === key) : -1;
+      if (at === -1) queuedPrompts.push(entry); else queuedPrompts[at] = entry;
+    },
+  },
+};
 globalThis.TextEncoder = TextEncoder;
 
 const script = html.slice(html.indexOf("<script>") + "<script>".length, html.lastIndexOf("</script>"));
@@ -161,5 +182,44 @@ const errorText = [...byId.entries()]
 const empty = descendants(ch, "bb-empty").map((c) => c.textContent);
 const more = descendants(ch, "bb-morechip").map((c) => c.textContent);
 
+// Replay the captain's gestures through the handlers the template actually
+// registered, so what is asserted is the board's own behavior.
+const rowNodeFor = (id) =>
+  descendants(ch, "bb-row").find((r) => rowOf(r).facts["Task record"] === id);
+const buttonIn = (node, cls, label) =>
+  descendants(node, cls).find((b) => b.textContent === label);
+const undoAfter = (row) => {
+  const sibs = row.parentNode?.children ?? [];
+  const next = sibs[sibs.indexOf(row) + 1];
+  return next?.className.split(/\s+/).includes("bb-undo") ? next : undefined;
+};
+const clickOrDie = (node, what) => {
+  if (!node) throw new Error("board-render-harness: no " + what);
+  node.dispatch("click");
+};
+
+for (const step of JSON.parse(process.argv[3] ?? "[]")) {
+  if (step.op === "queue") {
+    clickOrDie(byId.get("bb-remove-btn"), "Queue removals button");
+    continue;
+  }
+  const row = rowNodeFor(step.id);
+  if (!row) throw new Error("board-render-harness: no charted row for " + step.id);
+  if (step.op === "remove") {
+    clickOrDie(buttonIn(row, "fm-btn", "Remove from queue"), "Remove button for " + step.id);
+  } else if (step.op === "undo") {
+    clickOrDie(buttonIn(undoAfter(row) ?? row, "bb-linkcta", "Undo"), "Undo button for " + step.id);
+  } else {
+    throw new Error("board-render-harness: unknown step " + step.op);
+  }
+}
+
+const queued = queuedPrompts.map((q) => ({
+  queueKey: q.options?.queueKey ?? "",
+  question: q.options?.data?.question ?? "",
+  answer: q.options?.data?.answer ?? "",
+  prompt: q.prompt,
+}));
+
 process.stdout.write(
-  JSON.stringify({ stats, underway, charted, groups, empty, more, error: errorText }) + "\n");
+  JSON.stringify({ stats, underway, charted, groups, empty, more, error: errorText, queued }) + "\n");

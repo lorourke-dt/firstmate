@@ -415,10 +415,13 @@ MODEL=$(printf '%s' "$SNAP" | jq \
         end
       end;
   def body_context:
-    ((.body_lines // [])
-     | map(select(test("^(Captain hold set:|Resolution recorded by fm-(captain|decision)-hold\\.$|Decision digest:|Resolution mode:|Routed identities:|local main$)") | not))
-     | join(" "))
-    | if . == "" then null else . end;
+    (.body_lines // []) as $lines
+    | if any($lines[]; test("^Resolution recorded by fm-(captain|decision)-hold\\.$")) then null
+      else ($lines
+            | map(select(test("^(Captain hold set:|Decision digest:|Resolution mode:|Routed identities:|local main$)") | not))
+            | join(" "))
+        | if . == "" then null else . end
+      end;
   def as_gate($owner):
     {id, title:(.title | trunc(60)),
      blocked_by:((.unresolved_blocker_ids // []) | if length > 0 then join(",") else "-" end | trunc(120)),

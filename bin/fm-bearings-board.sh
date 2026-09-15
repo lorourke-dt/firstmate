@@ -404,17 +404,22 @@ board_theme_css() {  # prints the theme CSS, or nothing
 }
 
 board_logo_svg() {  # prints the logo SVG, or nothing
-  local file="$FM_HOME/config/board-logo.svg"
+  local file="$FM_HOME/config/board-logo.svg" flat
   [ -f "$file" ] && [ ! -L "$file" ] || return 0
-  grep -qiF '<svg' "$file" \
+  # An exporter is free to break a tag or an attribute across lines, and the
+  # browser reads it the same either way, so every refusal below matches the
+  # file with its newlines folded to spaces rather than line by line.
+  flat=$(tr '\n\r' '  ' < "$file") || fail "board logo could not be read: $file"
+  logo_carries() { printf '%s' "$flat" | grep -qiE "$1"; }
+  logo_carries '<[[:space:]]*svg[[:space:]/>]' \
     || fail "board logo is not an SVG element: $file"
-  if grep -qiE '<script|javascript:' "$file"; then
+  if logo_carries '<[[:space:]]*script[[:space:]/>]|javascript:'; then
     fail "board logo carries a script or javascript: URL: $file"
   fi
-  if grep -qiE '(^|[[:space:]"'"'"'/])on[a-z]+[[:space:]]*=' "$file"; then
+  if logo_carries '(^|[[:space:]"'"'"'/])on[a-z]+[[:space:]]*='; then
     fail "board logo carries an inline event handler attribute: $file"
   fi
-  if grep -qiE '<(animate|animateTransform|set)[[:space:]/>]' "$file"; then
+  if logo_carries '<[[:space:]]*(animateTransform|animate|set)[[:space:]/>]'; then
     fail "board logo carries a SMIL animation element (animate, animateTransform or set): $file"
   fi
   cat "$file"

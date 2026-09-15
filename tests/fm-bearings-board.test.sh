@@ -425,6 +425,29 @@ test_build_refuses_a_theme_or_logo_that_cannot_be_inlined_safely() {
   set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
   [ "$rc" -ne 0 ] || fail "a logo carrying a SMIL set element was accepted"
   assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  # An exporter's pretty-printed output breaks tags and attributes over several
+  # lines; the browser runs it just the same, so the refusal must too.
+  printf '<svg\n  onload\n  ="alert(1)">\n  <path d="M0 0"/>\n</svg>\n' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo whose event handler spans lines was accepted"
+  assert_contains "$out" "event handler" "the handler refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg>\n  <rect/>\n  <animate\n    attributeName="href"\n    to="x"/>\n</svg>\n' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo whose animation element spans lines was accepted"
+  assert_contains "$out" "animation element" "the animation refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg\n  xmlns="http://www.w3.org/2000/svg"\n  viewBox="0 0 10 10">\n  <title>house mark</title>\n</svg>\n' \
+    > "$home/config/board-logo.svg"
+  run_board "$home" build "$data" >/dev/null \
+    || fail "a pretty-printed but harmless logo was refused"
+  assert_present "$home/.lavish/bearings-board.html" "the accepted logo produced no board"
+  rm -f "$home/config/board-logo.svg"
   pass "build refuses a theme or logo that cannot be inlined safely"
 }
 

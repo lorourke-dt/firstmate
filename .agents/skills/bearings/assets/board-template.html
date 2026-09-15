@@ -774,6 +774,7 @@ __FM_BEARINGS_BOARD_DATA__
   var collapseAll = document.getElementById("bb-collapse-all");
   var groups = [];
   var removed = [];
+  var removeQueued = false;
   var anyPickable = false;
 
   function pickedIds() {
@@ -790,6 +791,30 @@ __FM_BEARINGS_BOARD_DATA__
     removeCount.textContent = limitMessage ||
       (removed.length ? removed.length + " removed from the queue" : "nothing removed");
     removeBtn.disabled = !removed.length;
+  }
+  /* The captain keeps editing the list after queueing it, so every later change
+     re-queues under the one remove.charted key and the last list wins - an
+     emptied list included, which queues an explicit "drop nothing". */
+  function queueRemovals() {
+    var removeAnswer = removed.join(",");
+    if (utf8ByteLength(removeAnswer) > 512) {
+      refreshRemove("Removal list is too long to queue (512 bytes maximum). ");
+      return false;
+    }
+    if (window.lavish && window.lavish.queuePrompt) {
+      window.lavish.queuePrompt(
+        removed.length
+          ? "Remove from the queue - drop this queued work from the backlog: " + removed.join(", ")
+          : "Remove from the queue - the captain took every removal back; drop nothing.",
+        { tag: "choice",
+          text: removed.length ? "Remove: " + removed.join(", ") : "Remove: nothing",
+          element: removeBar,
+          queueKey: "remove.charted",
+          data: { question: "remove.charted", answer: removeAnswer } }
+      );
+    }
+    removeQueued = true;
+    return true;
   }
 
   if (!queuedRows.length && !chartedMoreQueued) {
@@ -922,7 +947,7 @@ __FM_BEARINGS_BOARD_DATA__
       body.appendChild(row);
 
       /* Removing strikes the row, clears its dispatch tick, and offers Undo.
-         Undo before the removals are sent takes the id back out. */
+         Undo takes the id back out, before or after the removals are queued. */
       var undo = el("div", "bb-undo");
       undo.hidden = true;
       undo.appendChild(el("span", null,
@@ -946,6 +971,7 @@ __FM_BEARINGS_BOARD_DATA__
         undo.hidden = false;
         refreshDispatch();
         refreshRemove();
+        if (removeQueued) queueRemovals();
       });
       undoBtn.addEventListener("click", function () {
         var at = removed.indexOf(t.id);
@@ -954,6 +980,7 @@ __FM_BEARINGS_BOARD_DATA__
         if (pick) pick.disabled = false;
         undo.hidden = true;
         refreshRemove();
+        if (removeQueued) queueRemovals();
       });
     });
 
@@ -1007,20 +1034,8 @@ __FM_BEARINGS_BOARD_DATA__
 
   refreshRemove();
   removeBtn.addEventListener("click", function () {
-    var removeAnswer = removed.join(",");
     if (!removed.length) return;
-    if (utf8ByteLength(removeAnswer) > 512) {
-      refreshRemove("Removal list is too long to queue (512 bytes maximum). ");
-      return;
-    }
-    if (window.lavish && window.lavish.queuePrompt) {
-      window.lavish.queuePrompt(
-        "Remove from the queue - drop this queued work from the backlog: " + removed.join(", "),
-        { tag: "choice", text: "Remove: " + removed.join(", "), element: removeBar,
-          queueKey: "remove.charted",
-          data: { question: "remove.charted", answer: removeAnswer } }
-      );
-    }
+    if (!queueRemovals()) return;
     removeBar.classList.add("is-queued");
   });
   } catch (e) {

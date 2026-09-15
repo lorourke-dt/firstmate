@@ -136,6 +136,7 @@ Route the non-decision keys yourself:
 - `dispatch.charted` carries comma-separated task ids the captain picked to start now; verify each id against the current backlog - still queued, blocker and time gate actually clear - then dispatch through the normal lifecycle, and report any id that no longer qualifies instead of forcing it.
 - `remove.charted` carries comma-separated task ids the captain removed from the queue, and firstmate routes it: verify each id is still queued in the backlog, then drop it with `bin/fm-tasks-axi.sh rm <id>`, echo every removal in chat, and report any id that no longer qualifies - already started, already done, or still blocking another item - instead of forcing it.
   Nothing removes a backlog item without that firstmate step; the board only records what the captain struck.
+  The captain keeps editing the list after sending it, so a later `remove.charted` answer REPLACES the earlier one in full rather than adding to it; an empty answer is the captain taking every removal back, and drops nothing.
 
 After handling, rebuild the board from a fresh snapshot so acted-on items leave Captain's Call, and echo every action taken in chat so the board and chat never diverge silently.
 
