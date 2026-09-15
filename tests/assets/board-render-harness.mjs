@@ -5,7 +5,8 @@
 // Usage: node board-render-harness.mjs <built-board.html>
 // Prints one JSON document:
 //   { stats:[{n,label}], underway:[{title,sub,badges}],
-//     charted:[{title,sub,badges,pickable}], empty, more, error }
+//     charted:[{title,sub,badges,pickable,facts,removable}],
+//     groups:[{name,meta,rows}], empty, more, error }
 import { readFileSync } from "node:fs";
 
 const html = readFileSync(process.argv[2], "utf8");
@@ -26,6 +27,9 @@ class Node {
     this.checked = false;
     this.classList = {
       add: (c) => { this.className = (this.className + " " + c).trim(); },
+      remove: (c) => {
+        this.className = this.className.split(/\s+/).filter((x) => x && x !== c).join(" ");
+      },
       contains: (c) => this.className.split(/\s+/).includes(c),
     };
   }
@@ -37,6 +41,7 @@ class Node {
   set textContent(v) { this._text = String(v); this.children = []; }
   appendChild(n) { n.parentNode = this; this.children.push(n); return n; }
   setAttribute(k, v) { this.attributes[k] = v; }
+  getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attributes, k) ? this.attributes[k] : null; }
   addEventListener() {}
   querySelectorAll(sel) {
     const want = sel.replace(/^\./, "").replace(/:checked$/, "");
@@ -87,7 +92,11 @@ new Function(script)();
 const badgesOf = (row) =>
   row.children
     .filter((c) => c.className.includes("fm-badge"))
-    .map((c) => ({ tone: c.className.replace(/.*fm-badge--/, "").trim(), text: c.textContent }));
+    .map((c) => ({
+      // fm-badge--sm is a size modifier; the tone is the other one.
+      tone: (c.className.match(/fm-badge--(?!sm\b)([a-z]+)/) ?? [, ""])[1],
+      text: c.textContent,
+    }));
 
 const strip = byId.get("bb-stats") || new Node("div");
 const stats = strip.children.map((t) => ({
@@ -95,32 +104,62 @@ const stats = strip.children.map((t) => ({
   label: t.children.find((c) => c.className.includes("bb-stat__label"))?.textContent,
 }));
 
-const rowsOf = (container) =>
-  container.children
-    .filter((r) => r.className.split(/\s+/).includes("bb-row"))
-    .map((row) => {
-      const main = row.children.find((c) => c.className.includes("bb-row__main"));
-      return {
-        title: main?.children.find((c) => c.className.includes("bb-row__title"))?.textContent ?? "",
-        sub: main?.children.find((c) => c.className.includes("bb-row__sub"))?.textContent ?? "",
-        badges: badgesOf(row),
-        pickable: row.children.some((c) => c.className.includes("bb-pick") && !c.className.includes("spacer")),
-      };
-    });
+// Charted Next nests its rows inside collapsible project groups, and a row
+// nests its own title inside a summary button, so both lookups walk
+// descendants rather than direct children.
+const descendants = (node, cls) => {
+  const out = [];
+  const walk = (n) => {
+    for (const c of n.children) {
+      if (c.className.split(/\s+/).includes(cls)) out.push(c);
+      walk(c);
+    }
+  };
+  walk(node);
+  return out;
+};
+const firstWith = (node, cls) => descendants(node, cls)[0];
+
+const rowOf = (row) => {
+  const main = row.children.find((c) => c.className.includes("bb-row__main"));
+  const panel = main ? firstWith(main, "bb-panel") : undefined;
+  const factNodes = panel ? (firstWith(panel, "bb-panel__facts")?.children ?? []) : [];
+  const facts = {};
+  for (let i = 0; i + 1 < factNodes.length; i += 2) facts[factNodes[i].textContent] = factNodes[i + 1].textContent;
+  return {
+    title: main ? (firstWith(main, "bb-row__title")?.textContent ?? "") : "",
+    sub: main ? (firstWith(main, "bb-row__sub")?.textContent ?? "") : "",
+    badges: badgesOf(row),
+    pickable: row.children.some((c) => c.className.includes("bb-pick") && !c.className.includes("spacer")),
+    facts,
+    removable: panel ? descendants(panel, "fm-btn").some((b) => b.textContent === "Remove from queue") : false,
+  };
+};
+
+const rowsOf = (container) => descendants(container, "bb-row").map(rowOf);
 
 const uw = byId.get("bb-underway") || new Node("div");
 const underway = rowsOf(uw);
 
 const ch = byId.get("bb-charted") || new Node("div");
 const charted = rowsOf(ch);
+const groups = descendants(ch, "bb-group").map((g) => {
+  const head = g.children.find((c) => c.className.includes("bb-group__head"));
+  const body = g.children.find((c) => c.className.includes("bb-group__body"));
+  return {
+    name: head ? (firstWith(head, "bb-eyebrow")?.textContent ?? "") : "",
+    meta: head ? (firstWith(head, "bb-meta")?.textContent ?? "") : "",
+    rows: body ? descendants(body, "bb-row").map((r) => firstWith(r, "bb-row__title")?.textContent ?? "") : [],
+  };
+});
 // A fail-closed render replaces the page body instead of the board sections, so
 // surface it rather than reporting an empty board as a successful render.
 const errorText = [...byId.entries()]
   .filter(([k]) => k.startsWith("sel:"))
   .flatMap(([, n]) => n.children.map((c) => c.textContent))
   .join(" ");
-const empty = ch.children.filter((c) => c.className.includes("bb-empty")).map((c) => c.textContent);
-const more = ch.children.filter((c) => c.className.includes("bb-morechip")).map((c) => c.textContent);
+const empty = descendants(ch, "bb-empty").map((c) => c.textContent);
+const more = descendants(ch, "bb-morechip").map((c) => c.textContent);
 
 process.stdout.write(
-  JSON.stringify({ stats, underway, charted, empty, more, error: errorText }) + "\n");
+  JSON.stringify({ stats, underway, charted, groups, empty, more, error: errorText }) + "\n");

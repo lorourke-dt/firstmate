@@ -6,370 +6,458 @@
 <title>Bearings - fleet board</title>
 <style>
 /* ============================================================
-   Bearings board - Firstmate Design System, inlined for portability.
-   Tokens copied verbatim from myfirstmate priv/static/assets/app.css
-   (the compiled adoption of .agents/skills/firstmate-design).
+   Bearings board - "Strip" layout.
+
+   Every colour, radius, font, shadow and hairline the layout uses is a CSS
+   custom property declared on :root below, and nothing beneath this block
+   hard-codes one. That is the whole point: a home re-themes this board by
+   redefining tokens in $FM_HOME/config/board-theme.css, which the build
+   inlines into #fm-board-theme AFTER this block, without touching layout.
+
+   The values here are the tracked NEUTRAL defaults - a system sans stack, a
+   neutral dark band and a restrained accent. No licensed typeface and no
+   company palette is committed to this repository.
    ============================================================ */
-@import url("https://fonts.googleapis.com/css2?family=Chango&family=Jost:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 
 :root {
-  --rust-700: #8f2f17; --rust-600: #a93a1f; --rust-500: #c0452a;
-  --rust-400: #d35f3f; --rust-300: #e08365; --rust-100: #f4d8c9; --rust-050: #fbece3;
-  --navy-700: #1a2238; --navy-600: #222c49; --navy-500: #2a3656;
-  --navy-300: #6c7796; --navy-100: #d9deea;
-  --gold-600: #b5791c; --gold-500: #e0a52e; --gold-300: #f0d38c; --gold-100: #f8ecc9;
-  --ocean-600: #2f6688; --ocean-500: #3c7ea6; --ocean-200: #b6d4e2; --ocean-050: #e8f1f5;
-  --sea-700: #234e3a; --sea-500: #2f6b4f; --sea-200: #b9d4c5; --sea-050: #e9f2ec;
-  --paper-000: #fbf4e2; --paper-100: #f6ecd3; --paper-200: #f0e3c4; --paper-300: #e7d6ae;
-  --cream-line: #ddc89c;
-  --ink-900: #241c14; --ink-700: #3f3224; --ink-500: #6f5e46; --ink-300: #9c8a6c;
-  --white: #fffdf7;
-  --bg-page: var(--paper-100);
-  --surface-card: var(--white);
-  --surface-card-warm: var(--paper-000);
-  --text-strong: var(--ink-900); --text-body: var(--ink-700);
-  --text-muted: var(--ink-500); --text-faint: var(--ink-300);
-  --border-default: var(--cream-line); --border-soft: var(--paper-300);
-  --status-online: var(--sea-500); --status-online-soft: var(--sea-050);
-  --status-warn: var(--gold-600); --status-warn-soft: var(--gold-100);
-  --status-danger: var(--rust-600); --status-danger-soft: var(--rust-050);
-  --status-info: var(--ocean-500); --status-info-soft: var(--ocean-050);
-  --font-display: "Chango", "Cooper Black", Rockwell, Georgia, serif;
-  --font-sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --fs-h3: 1.4rem; --fs-h4: 1.15rem; --fs-base: 1rem; --fs-sm: 0.9375rem;
-  --fs-xs: 0.8125rem; --fs-2xs: 0.6875rem;
-  --ls-caps: 0.16em;
-  --radius-xs: 6px; --radius-sm: 9px; --radius-md: 12px; --radius-banner: 7px;
-  --radius-lg: 18px; --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px rgba(36, 28, 20, 0.06), 0 4px 10px rgba(36, 28, 20, 0.06);
-  --shadow-hard: 4px 4px 0 var(--ink-900);
-  --shadow-hard-sm: 3px 3px 0 var(--ink-900);
-  --texture-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
-  --focus-ring: 0 0 0 3px var(--gold-300);
-  --container-app: 1180px;
+  /* type */
+  --bb-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --bb-fs-band-num: 44px;
+  --bb-fs-h2: 28px;
+  --bb-fs-title: 22px;
+  --bb-fs-body: 16px;
+  --bb-fs-row: 15px;
+  --bb-fs-sm: 14px;
+  --bb-fs-eyebrow: 13px;
+  --bb-fs-meta: 12px;
+  --bb-fs-badge: 12px;
+  --bb-fs-badge-sm: 10px;
+  --bb-ls-eyebrow: 0.14em;
+  --bb-ls-badge: 0.06em;
+
+  /* colour */
+  --bb-accent: #3f5c8a;          /* restrained accent */
+  --bb-accent-strong: #2c4267;
+  --bb-accent-soft: rgba(63, 92, 138, 0.10);
+  --bb-accent-line: rgba(63, 92, 138, 0.45);
+  --bb-dark: #242c35;            /* the band */
+  --bb-on-dark: #ffffff;
+  --bb-on-dark-quiet: rgba(255, 255, 255, 0.55);
+  --bb-on-dark-hot: #9fb6d8;
+  --bb-on-dark-rule: rgba(255, 255, 255, 0.20);
+  --bb-ink: #242c35;             /* strong text */
+  --bb-body: #475263;            /* secondary text */
+  --bb-muted: #8a8f97;           /* meta text */
+  --bb-page: #ffffff;
+  --bb-surface: #ffffff;
+  --bb-surface-alt: #f6f6f7;
+  --bb-rule: #e5e5e7;
+  --bb-line-soft: #d9d9d9;
+  --bb-ok: #2e7d4f;
+  --bb-ok-ink: #1f6b40;
+  --bb-ok-soft: rgba(46, 125, 79, 0.12);
+  --bb-warn-ink: #9a6c14;
+  --bb-warn-soft: rgba(217, 154, 42, 0.16);
+  --bb-danger: #b03a2e;
+  --bb-danger-soft: rgba(176, 58, 46, 0.12);
+
+  /* shape */
+  --bb-radius-control: 6px;
+  --bb-radius-card: 10px;
+  --bb-radius-pill: 999px;
+  --bb-hairline: 1px;
+  --bb-shadow-card: 0 1px 2px rgba(36, 44, 53, 0.05);
+  --bb-shadow-raised: 0 2px 8px rgba(36, 44, 53, 0.08);
+  --bb-focus: 0 0 0 3px var(--bb-accent-soft);
+
+  /* rhythm */
+  --bb-gutter: 56px;
+  --bb-col-gap: 56px;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: var(--font-sans);
-  color: var(--text-body);
-  background: var(--bg-page);
-  background-image: var(--texture-paper);
+  font-family: var(--bb-font);
+  font-size: var(--bb-fs-body);
   line-height: 1.55;
+  color: var(--bb-ink);
+  background: var(--bb-page);
   -webkit-font-smoothing: antialiased;
 }
-a { color: inherit; text-decoration: none; }
+a { color: var(--bb-accent); text-decoration: none; }
+a:hover { color: var(--bb-accent-strong); }
 
-/* ---- fm-badge (enamel sign-pin), verbatim contract ---- */
-.fm-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: var(--fs-2xs); font-weight: 800; line-height: 1;
-  padding: 5px 9px 4px; text-transform: uppercase; letter-spacing: 0.07em;
-  border-radius: var(--radius-xs); border: 1.5px solid var(--ink-900);
-  box-shadow: 2px 2px 0 var(--ink-900); white-space: nowrap;
+.bb-eyebrow {
+  font-weight: 600; font-size: var(--bb-fs-eyebrow); letter-spacing: var(--bb-ls-eyebrow);
+  text-transform: uppercase; color: var(--bb-accent);
 }
-.fm-badge--online  { background: var(--sea-500);  color: var(--paper-000); }
-.fm-badge--warn    { background: var(--gold-500); color: var(--navy-700); }
-.fm-badge--danger  { background: var(--rust-600); color: var(--paper-000); }
-.fm-badge--info    { background: var(--ocean-500); color: var(--paper-000); }
-.fm-badge--neutral { background: var(--paper-000); color: var(--ink-900); }
-.fm-badge--solid   { background: var(--rust-500); color: var(--paper-000); }
+.bb-eyebrow--dark { color: var(--bb-on-dark); opacity: 0.85; }
+.bb-eyebrow--quiet { color: var(--bb-muted); }
+.bb-meta {
+  font-weight: 500; font-size: var(--bb-fs-meta); letter-spacing: 0.02em;
+  color: var(--bb-muted); line-height: 1.4;
+}
+.bb-mono { font-family: var(--bb-mono); font-size: var(--bb-fs-eyebrow); }
 
-/* ---- fm-btn ---- */
+.fm-badge {
+  display: inline-block; font-size: var(--bb-fs-badge); font-weight: 600;
+  letter-spacing: var(--bb-ls-badge); text-transform: uppercase;
+  padding: 5px 10px; border-radius: var(--bb-radius-pill); line-height: 1.2; white-space: nowrap;
+}
+.fm-badge--sm { font-size: var(--bb-fs-badge-sm); padding: 3px 8px; }
+.fm-badge--solid   { background: var(--bb-accent-soft); color: var(--bb-accent); }
+.fm-badge--outline { box-shadow: inset 0 0 0 1.5px var(--bb-accent-line); color: var(--bb-accent); }
+.fm-badge--online  { background: var(--bb-ok-soft); color: var(--bb-ok-ink); }
+.fm-badge--warn    { background: var(--bb-warn-soft); color: var(--bb-warn-ink); }
+.fm-badge--danger  { background: var(--bb-danger-soft); color: var(--bb-danger); }
+.fm-badge--info    { background: var(--bb-accent-soft); color: var(--bb-accent); }
+.fm-badge--neutral { background: var(--bb-line-soft); color: var(--bb-ink); }
+
 .fm-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  font-family: var(--font-sans); font-weight: 800; line-height: 1; white-space: nowrap;
-  border: 2px solid transparent; border-radius: var(--radius-banner); cursor: pointer;
-  text-decoration: none; transition: background 120ms, border-color 120ms, transform 120ms, box-shadow 120ms;
+  font-family: var(--bb-font); font-weight: 600; font-size: var(--bb-fs-eyebrow);
+  letter-spacing: var(--bb-ls-badge); text-transform: uppercase;
+  padding: 12px 20px; border-radius: var(--bb-radius-control); border: 0;
+  cursor: pointer; line-height: 1; min-height: 44px; white-space: nowrap;
 }
-.fm-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.fm-btn:active { transform: translateY(1px); }
-.fm-btn--sm { font-size: var(--fs-xs); padding: 8px 16px; }
-.fm-btn--primary { background: var(--rust-500); color: var(--white); border-color: var(--ink-900); box-shadow: var(--shadow-hard-sm); }
-.fm-btn--primary:hover { background: var(--rust-600); }
-.fm-btn--gold { background: var(--gold-500); color: var(--navy-700); border-color: var(--ink-900); box-shadow: var(--shadow-hard-sm); }
-.fm-btn--gold:hover { background: var(--gold-600); color: var(--white); }
-.fm-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.fm-btn--sm { min-height: 40px; padding: 10px 16px; }
+.fm-btn--xs { min-height: 36px; padding: 8px 14px; font-size: var(--bb-fs-meta); }
+.fm-btn--primary { background: var(--bb-accent); color: var(--bb-on-dark); }
+.fm-btn--primary:hover { background: var(--bb-accent-strong); }
+.fm-btn--ghost { background: transparent; color: var(--bb-accent); box-shadow: inset 0 0 0 1.5px var(--bb-accent-line); }
+.fm-btn--ghost:hover { background: var(--bb-surface-alt); }
+.fm-btn:focus-visible { outline: none; box-shadow: var(--bb-focus); }
+.fm-btn[disabled] { opacity: 0.4; pointer-events: none; }
 
-/* ---- fm-card ---- */
+.bb-linkcta {
+  background: none; border: 0; padding: 0 0 2px; cursor: pointer; font: inherit;
+  font-weight: 600; font-size: var(--bb-fs-meta); letter-spacing: var(--bb-ls-eyebrow);
+  text-transform: uppercase; color: var(--bb-accent);
+  border-bottom: 2px solid var(--bb-accent);
+}
+.bb-linkcta:focus-visible { outline: none; box-shadow: var(--bb-focus); }
+
 .fm-card {
-  background: var(--surface-card); border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+  background: var(--bb-surface); border: var(--bb-hairline) solid var(--bb-rule);
+  border-radius: var(--bb-radius-card); box-shadow: var(--bb-shadow-card);
 }
-.fm-card--poster { border: 2px solid var(--ink-900); box-shadow: var(--shadow-hard); border-radius: var(--radius-md); }
-.fm-card--warm { background: var(--surface-card-warm); }
 
-/* ---- fm-sign (eyebrow section label) ---- */
-.fm-sign {
-  display: inline-flex; align-items: center; gap: 8px; font-weight: 800;
-  text-transform: uppercase; letter-spacing: var(--ls-caps); font-size: var(--fs-xs);
-  line-height: 1; white-space: nowrap;
+/* ---- the band: logo, wordmark, date, four oversized metrics ---- */
+.bb-band {
+  background: var(--bb-dark); color: var(--bb-on-dark);
+  padding: 28px var(--bb-gutter) 32px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+  gap: 48px; align-items: center;
 }
-.fm-sign--eyebrow { color: var(--rust-500); }
-.fm-sign--muted { color: var(--ink-500); }
-.fm-sign svg { width: 14px; height: 14px; }
-.fm-ico { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.18em; }
+.bb-band__id { display: flex; align-items: center; gap: 20px; min-width: 0; }
+.bb-band__logo { display: inline-flex; align-items: center; color: var(--bb-on-dark); }
+.bb-band__logo svg { display: block; height: 34px; width: auto; }
+.bb-band__wordmark {
+  font-weight: 700; font-size: 26px; letter-spacing: -0.01em; line-height: 1;
+  color: var(--bb-on-dark);
+}
+.bb-band__rule { width: 1px; height: 26px; background: var(--bb-on-dark-rule); flex: none; }
+.bb-band__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 24px; }
+.bb-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bb-stat__num {
+  font-weight: 700; font-size: var(--bb-fs-band-num); line-height: 1.05;
+  letter-spacing: -0.02em; color: var(--bb-on-dark);
+}
+.bb-stat__label {
+  font-weight: 600; font-size: var(--bb-fs-eyebrow); letter-spacing: var(--bb-ls-eyebrow);
+  text-transform: uppercase; color: var(--bb-on-dark-quiet);
+}
+.bb-stat--hot .bb-stat__label { color: var(--bb-on-dark-hot); }
 
-/* ============================================================
-   Board chrome (bb-*) - built on the same tokens
-   ============================================================ */
-.bb-nav {
-  position: sticky; top: 0; z-index: 20;
-  background: color-mix(in srgb, var(--paper-100) 86%, transparent);
-  backdrop-filter: saturate(150%) blur(10px);
-  border-bottom: 1px solid var(--border-default);
+/* ---- the Underway strip ---- */
+.bb-strip {
+  background: var(--bb-surface-alt);
+  border-bottom: var(--bb-hairline) solid var(--bb-rule);
+  padding: 24px var(--bb-gutter) 28px;
+  display: flex; flex-direction: column; gap: 14px;
 }
-.bb-nav__inner {
-  max-width: var(--container-app); margin: 0 auto; padding: 0 28px; height: 64px;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+.bb-strip__head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.bb-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+/* an Underway tile is still a .bb-row: same title/sub contract, tile shape */
+.bb-tiles .bb-row {
+  background: var(--bb-surface); border: var(--bb-hairline) solid var(--bb-rule);
+  border-radius: var(--bb-radius-card); box-shadow: var(--bb-shadow-card);
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
 }
-.bb-brand { display: inline-flex; align-items: center; gap: 12px; }
-.bb-brand__disc {
-  display: grid; place-items: center; width: 34px; height: 34px; flex: none;
-  border-radius: 999px; background: var(--rust-500); color: var(--paper-000);
-  border: 2px solid var(--ink-900); box-shadow: var(--shadow-hard-sm);
-}
-.bb-brand__disc svg { width: 60%; height: 60%; }
-.bb-brand__wm { font-family: var(--font-display); font-size: 23px; color: var(--text-strong); line-height: 1; }
-.bb-meta-mono { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-faint); white-space: nowrap; }
+.bb-tiles .bb-row .fm-badge { align-self: flex-start; order: -1; }
+.bb-tiles .bb-row__main { display: contents; }
+.bb-tiles .bb-row__title { font-weight: 600; font-size: var(--bb-fs-body); line-height: 1.3; color: var(--bb-ink); }
+.bb-tiles .bb-row__sub { color: var(--bb-body); font-size: var(--bb-fs-sm); line-height: 1.4; }
 
+/* ---- the two columns ---- */
 .bb-main {
-  max-width: var(--container-app); margin: 0 auto;
-  padding: 26px 28px 72px; display: flex; flex-direction: column; gap: 22px;
+  padding: 48px var(--bb-gutter) 96px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--bb-col-gap); align-items: start;
 }
+.bb-colL { display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+.bb-section { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.bb-section__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.bb-section__title { margin: 6px 0 0; font-weight: 600; font-size: var(--bb-fs-h2); line-height: 1.2; }
 
-/* stat strip */
-.bb-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.bb-stat {
-  display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; min-width: 0;
-  background: var(--surface-card-warm); border: 1px solid var(--border-soft); border-radius: var(--radius-md);
-}
-.bb-stat--call { background: var(--rust-050); border: 2px solid var(--rust-500); }
-.bb-stat__num { font-family: var(--font-mono); font-size: var(--fs-h3); font-weight: 600; line-height: 1; color: var(--text-strong); }
-.bb-stat--call .bb-stat__num { color: var(--rust-600); }
-.bb-stat__label { font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
-
-.bb-section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.bb-section__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.bb-cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; }
-
-/* ---- Captain's Call: one card at a time, dealt off a visible stack ---- */
-.bb-callwrap { display: flex; flex-direction: column; gap: 12px; }
-/* extra top margin clears the pile edges that poke below the active card */
-.bb-stacknav { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
-.bb-stacknav__count { flex: 1 1 auto; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-muted); }
+/* ---- Captain's Call: one card at a time, flipped from the section header ---- */
+.bb-stacknav { display: flex; align-items: center; gap: 8px; flex: none; }
+.bb-stacknav__count { white-space: nowrap; }
 .bb-stacknav__btn {
-  display: inline-grid; place-items: center; width: 34px; height: 34px; cursor: pointer;
-  background: var(--surface-card); color: var(--text-strong);
-  border: 1.5px solid var(--border-default); border-radius: var(--radius-sm);
-  transition: background 120ms, border-color 120ms;
+  width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  border: var(--bb-hairline) solid var(--bb-line-soft); border-radius: var(--bb-radius-control);
+  background: var(--bb-surface); color: var(--bb-ink); cursor: pointer;
 }
-.bb-stacknav__btn:hover { background: var(--paper-100); border-color: var(--ink-500); }
-.bb-stacknav__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.bb-stacknav__btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+.bb-stacknav__btn:hover { background: var(--bb-surface-alt); }
+.bb-stacknav__btn:focus-visible { outline: none; box-shadow: var(--bb-focus); }
+.bb-stacknav__btn[disabled] { opacity: 0.35; cursor: default; }
 .bb-stacknav__btn svg { width: 16px; height: 16px; }
-/* the stack: a squared-up paper pile - solid card faces at slight opposing
-   rotations, like dealt cards, not translucent offset rectangles. The pile
-   thins as cards are answered: two edges, then one, then none on the last. */
-.bb-call { position: relative; display: grid; }
-.bb-call::before, .bb-call::after {
-  content: ""; position: absolute; inset: 0; z-index: 0;
-  background: var(--surface-card); border: 2px solid var(--ink-900);
-  border-radius: var(--radius-md); box-shadow: var(--shadow-hard-sm);
+
+.bb-call { display: block; }
+.bb-decision {
+  padding: 24px; display: flex; flex-direction: column; gap: 16px;
+  background: var(--bb-surface); border: var(--bb-hairline) solid var(--bb-rule);
+  border-radius: var(--bb-radius-card); box-shadow: var(--bb-shadow-card);
 }
-.bb-call::before { transform: rotate(1.3deg) translate(4px, 5px); }
-.bb-call::after  { transform: rotate(-1.1deg) translate(-3px, 9px); }
-.bb-call--penult::after { display: none; }
-.bb-call--last::before, .bb-call--last::after,
-.bb-call--empty::before, .bb-call--empty::after { display: none; }
-.bb-call > .bb-decision { grid-area: 1 / 1; z-index: 1; }
-.bb-call > .bb-decision[hidden] { display: none; }
-.bb-decision { display: flex; flex-direction: column; }
-.bb-decision__pad { padding: 18px 20px 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
-.bb-decision__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.bb-decision__repo { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-faint); white-space: nowrap; }
-.bb-decision__title { margin: 0; font-size: var(--fs-h4); font-weight: 800; color: var(--text-strong); line-height: 1.25; }
-.bb-decision__detail { margin: 0; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.45; }
-/* about / decide / recommended - three scannable context rows */
-.bb-ctx { display: flex; flex-direction: column; gap: 6px; }
-.bb-ctx__row { display: grid; grid-template-columns: 78px minmax(0,1fr); gap: 8px; align-items: baseline; }
-.bb-ctx__k { font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: 0.04em;
-  text-transform: uppercase; color: var(--text-faint); white-space: nowrap; }
-.bb-ctx__v { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.4; min-width: 0; }
-.bb-decision__link { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ocean-600); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-.bb-decision__link:hover { text-decoration: underline; }
-/* One rhythm owner: the answer form is a flex column with the same 12px gap as
-   the card pad, and the foot rides margin-top:auto so every Queue answer button
-   sits on the same baseline with identical breathing room. */
-.bb-decision form { display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; }
-.bb-opts { display: flex; flex-direction: column; gap: 7px; }
+.bb-decision[hidden] { display: none; }
+.bb-decision__top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bb-decision__repo { font-weight: 500; font-size: var(--bb-fs-meta); color: var(--bb-muted); }
+.bb-decision__title { margin: 0; font-weight: 600; font-size: var(--bb-fs-title); line-height: 1.3; letter-spacing: -0.01em; }
+.bb-decision__detail { margin: 0; color: var(--bb-body); font-size: var(--bb-fs-row); }
+.bb-decision__link { font-family: var(--bb-mono); font-size: var(--bb-fs-eyebrow); word-break: break-all; }
+.bb-ctx { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 6px 16px; font-size: var(--bb-fs-row); }
+.bb-ctx__k { font-weight: 500; font-size: var(--bb-fs-meta); color: var(--bb-muted); padding-top: 3px; text-transform: uppercase; letter-spacing: 0.02em; }
+.bb-ctx__v { color: var(--bb-body); min-width: 0; }
+.bb-decision form { display: flex; flex-direction: column; gap: 16px; }
+.bb-opts { display: flex; flex-direction: column; gap: 10px; }
 .bb-opt {
-  display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; cursor: pointer;
-  background: var(--surface-card-warm); border: 1.5px solid var(--border-default);
-  border-radius: var(--radius-sm); transition: border-color 120ms, background 120ms;
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px;
+  border: var(--bb-hairline) solid var(--bb-rule); border-radius: var(--bb-radius-control);
+  cursor: pointer; min-height: 44px; background: var(--bb-surface);
 }
-.bb-opt:hover { border-color: var(--ink-300); }
-.bb-opt input { accent-color: var(--rust-500); margin-top: 3px; flex: none; }
+.bb-opt:hover { background: var(--bb-surface-alt); }
+.bb-opt input { margin: 4px 0 0; accent-color: var(--bb-accent); width: 16px; height: 16px; flex: none; }
 .bb-opt__body { min-width: 0; flex: 1 1 auto; }
-.bb-opt__label { display: block; font-size: var(--fs-sm); font-weight: 700; color: var(--text-strong); line-height: 1.3; }
-.bb-opt__hint { display: block; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.35; margin-top: 1px; }
-.bb-opt__rec { flex: none; align-self: center; font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--navy-700); background: var(--gold-300);
-  border: 1px solid var(--gold-600); border-radius: var(--radius-xs); padding: 3px 7px 2px; }
-.bb-opt:has(input:checked) { border-color: var(--rust-500); background: var(--rust-050); box-shadow: inset 0 0 0 1px var(--rust-500); }
-.bb-decision__foot { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+.bb-opt__label { font-weight: 600; display: block; font-size: var(--bb-fs-row); line-height: 1.3; }
+.bb-opt__hint { display: block; color: var(--bb-body); font-size: var(--bb-fs-sm); }
+.bb-opt__rec {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--bb-accent); margin-left: auto; align-self: center; white-space: nowrap;
+}
+.bb-freeform {
+  flex: 1 1 200px; min-width: 0; font: inherit; font-size: var(--bb-fs-row);
+  padding: 10px 12px; border: var(--bb-hairline) solid var(--bb-line-soft);
+  border-radius: var(--bb-radius-control); min-height: 44px;
+}
+.bb-freeform:focus { outline: none; box-shadow: var(--bb-focus); border-color: var(--bb-accent-line); }
+.bb-decision__foot { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .bb-queued {
-  display: none; align-items: center; gap: 6px;
-  font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em;
-  color: var(--sea-700); background: var(--sea-050); border: 1.5px solid var(--sea-200);
-  border-radius: var(--radius-xs); padding: 5px 9px 4px;
+  display: none; align-items: center; gap: 6px; font-size: var(--bb-fs-badge);
+  font-weight: 600; letter-spacing: var(--bb-ls-badge); text-transform: uppercase;
+  color: var(--bb-ok-ink); background: var(--bb-ok-soft);
+  border-radius: var(--bb-radius-pill); padding: 5px 10px;
 }
 .is-queued .bb-queued { display: inline-flex; }
-.bb-limit { display: none; font-size: var(--fs-xs); font-weight: 700; color: var(--status-danger); }
+.bb-limit { display: none; font-size: var(--bb-fs-sm); font-weight: 600; color: var(--bb-danger); }
 .bb-limit.is-visible { display: inline; }
-.bb-freeform { width: 100%; font-family: var(--font-sans); font-size: var(--fs-sm); color: var(--text-strong);
-  background: var(--surface-card); border: 1.5px solid var(--border-default); border-radius: var(--radius-sm); padding: 8px 11px; }
-.bb-freeform:focus { outline: none; border-color: var(--rust-400); box-shadow: var(--focus-ring); }
 
-/* ---- compact rows (Underway / Landed / Charted) ---- */
+/* ---- Landed: a compact hairline ledger ---- */
 .bb-rows { display: flex; flex-direction: column; }
-.bb-row {
-  display: flex; align-items: center; gap: 12px; padding: 11px 18px;
-  border-top: 1px solid var(--border-soft); min-width: 0;
+.bb-landed .bb-row {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 14px;
+  align-items: start; padding: 12px 0; border-top: var(--bb-hairline) solid var(--bb-rule);
 }
-.bb-row:first-child { border-top: none; }
-.bb-row__main { min-width: 0; flex: 1 1 auto; }
-.bb-row__title { font-size: var(--fs-sm); font-weight: 700; color: var(--text-strong); line-height: 1.3;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bb-row__sub { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.3; margin-top: 1px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bb-row__id { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-faint); white-space: nowrap; }
-.bb-row__pr { font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--ocean-600); white-space: nowrap; }
+.bb-row__check { color: var(--bb-ok); display: flex; }
+.bb-row__check svg { width: 16px; height: 16px; }
+.bb-landed .bb-row__title { font-size: var(--bb-fs-row); line-height: 1.35; }
+.bb-landed .bb-row__sub { font-weight: 500; font-size: var(--bb-fs-meta); color: var(--bb-muted); line-height: 1.4; }
+.bb-row__pr { font-family: var(--bb-mono); font-size: var(--bb-fs-eyebrow); padding-top: 2px; white-space: nowrap; }
 .bb-row__pr:hover { text-decoration: underline; }
-.bb-row__check { width: 26px; height: 26px; border-radius: var(--radius-sm); display: grid; place-items: center; flex: none;
-  background: var(--status-online-soft); color: var(--status-online); border: 1.5px solid var(--sea-200); }
-.bb-row__check svg { width: 15px; height: 15px; }
+
+/* ---- Charted Next: project groups of expandable queue rows ---- */
+.bb-group { display: block; }
+.bb-group__head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 16px 0 6px; cursor: pointer; min-height: 44px; width: 100%;
+  background: none; border: 0; font: inherit; text-align: left; color: inherit;
+}
+.bb-group__head:focus-visible { outline: none; box-shadow: var(--bb-focus); }
+.bb-group__name { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.bb-group__head:hover .bb-eyebrow { color: var(--bb-accent-strong); }
+.bb-group__body[hidden] { display: none; }
+.bb-chev { flex: none; color: var(--bb-muted); transition: transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.bb-chev svg { width: 14px; height: 14px; display: block; }
+.is-open > .bb-group__head .bb-chev, .bb-row.is-open .bb-chev { transform: rotate(90deg); }
+
+.bb-charted .bb-row {
+  display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 12px;
+  align-items: start; border-top: var(--bb-hairline) solid var(--bb-rule); padding: 0;
+}
+.bb-charted .bb-row__main {
+  grid-column: 2; display: flex; flex-direction: column; min-width: 0;
+}
+.bb-charted .bb-row__summary {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 0;
+  cursor: pointer; min-height: 44px; background: none; border: 0; font: inherit;
+  text-align: left; color: inherit; width: 100%;
+}
+.bb-charted .bb-row__summary:focus-visible { outline: none; box-shadow: var(--bb-focus); }
+.bb-charted .bb-row__summary .bb-chev { margin-top: 5px; }
+.bb-charted .bb-row__title {
+  font-size: var(--bb-fs-sm); line-height: 1.4; flex: 1 1 auto; min-width: 0; color: var(--bb-ink);
+}
+.bb-charted .bb-row__summary:hover .bb-row__title { color: var(--bb-accent); }
+.bb-charted .bb-row__sub { padding: 0 0 10px 24px; font-size: var(--bb-fs-sm); color: var(--bb-body); }
+.bb-charted .bb-row > .fm-badge { grid-column: 3; margin-top: 12px; }
+.bb-charted .bb-row > .fm-badge ~ .fm-badge { margin-left: 6px; }
+.bb-pick { accent-color: var(--bb-accent); width: 18px; height: 18px; margin: 14px 0 0; flex: none; grid-column: 1; }
+.bb-pick-spacer {
+  width: 18px; height: 18px; margin-top: 14px; border-radius: 3px;
+  border: 1.5px dashed var(--bb-line-soft); grid-column: 1;
+}
+.bb-panel {
+  padding: 2px 0 14px 24px; display: flex; flex-direction: column; gap: 10px;
+  font-size: var(--bb-fs-sm); color: var(--bb-body);
+}
+.bb-panel[hidden] { display: none; }
+.bb-panel__facts { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 4px 12px; }
+.bb-panel__foot { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding-top: 4px; }
+.bb-panel__foot .fm-btn { margin-left: auto; }
+.bb-row.is-removed { opacity: 0.45; }
+.bb-row.is-removed .bb-row__title { text-decoration: line-through; }
+.bb-undo {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 10px 0 10px 30px; font-size: var(--bb-fs-sm); color: var(--bb-body);
+}
+
+.bb-actions {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 16px 0 0; border-top: var(--bb-hairline) solid var(--bb-rule); margin-top: 16px;
+}
+.bb-actions[hidden] { display: none; }
+.bb-actions__count {
+  flex: 1 1 auto; font-weight: 600; font-size: var(--bb-fs-meta);
+  letter-spacing: var(--bb-ls-badge); text-transform: uppercase; color: var(--bb-muted);
+}
 .bb-morechip {
-  display: inline-flex; align-items: center; gap: 6px; margin: 10px 18px 12px;
-  font-size: var(--fs-xs); font-weight: 800; color: var(--text-muted);
-  border: 1.5px dashed var(--ink-300); border-radius: var(--radius-pill); padding: 5px 12px; width: fit-content;
+  display: inline-flex; align-items: center; gap: 6px; margin: 12px 0 0;
+  font-size: var(--bb-fs-sm); font-weight: 600; color: var(--bb-muted);
+  border: 1.5px dashed var(--bb-line-soft); border-radius: var(--bb-radius-pill);
+  padding: 5px 12px; width: fit-content;
 }
-.bb-empty { padding: 18px; font-size: var(--fs-sm); color: var(--text-muted); }
+.bb-empty { padding: 16px 0; font-size: var(--bb-fs-row); color: var(--bb-body); }
 
-/* ---- Charted Next dispatch picker ---- */
-/* margin:0 kills the UA default checkbox margin so picker rows and spacer rows
-   share one text left edge */
-.bb-pick { accent-color: var(--rust-500); width: 16px; height: 16px; flex: none; cursor: pointer; margin: 0; }
-.bb-pick-spacer { width: 16px; flex: none; }
-.bb-dispatch {
-  display: flex; align-items: center; gap: 12px; padding: 12px 18px;
-  border-top: 1.5px solid var(--border-default); background: var(--paper-100);
+.bb-foot {
+  display: flex; justify-content: flex-end;
+  padding: 0 var(--bb-gutter) 40px;
 }
-.bb-dispatch__count { flex: 1 1 auto; font-size: var(--fs-xs); font-weight: 800; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.07em; }
 
-.bb-foot { display: flex; justify-content: flex-end; border-top: 1px solid var(--border-default); padding-top: 14px; }
+/* the fail-closed error card replaces the board body */
+.bb-error { margin: 48px var(--bb-gutter); }
 
-@media (max-width: 900px) {
-  .bb-cols { grid-template-columns: 1fr; }
+@media (max-width: 980px) {
+  :root { --bb-gutter: 24px; --bb-col-gap: 32px; }
+  .bb-band { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .bb-main { grid-template-columns: minmax(0, 1fr); }
 }
+</style>
+<!-- HOME-LOCAL THEME. bin/fm-bearings-board.sh build inlines
+     $FM_HOME/config/board-theme.css here, after the tracked defaults above, so
+     a home re-themes the board by redefining tokens only. With no such file the
+     placeholder is replaced by nothing and the neutral defaults stand. -->
+<style id="fm-board-theme">
+__FM_BEARINGS_BOARD_THEME__
 </style>
 </head>
 <body>
 
-<header class="bb-nav">
-  <div class="bb-nav__inner">
-    <span class="bb-brand">
-      <span class="bb-brand__disc">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 6v16"/><path d="m19 13 2-1a9 9 0 0 1-18 0l2 1"/><path d="M9 11h6"/><circle cx="12" cy="4" r="2"/>
-        </svg>
-      </span>
-      <span class="bb-brand__wm">bearings</span>
-    </span>
+<section class="bb-band">
+  <div class="bb-band__id">
+    <!-- HOME-LOCAL LOGO. build inlines $FM_HOME/config/board-logo.svg here;
+         with no such file the placeholder is replaced by nothing and the plain
+         wordmark beside it is the whole mark. -->
+    <span class="bb-band__logo" id="bb-logo">
+__FM_BEARINGS_BOARD_LOGO__
+</span>
+    <span class="bb-band__wordmark">Bearings</span>
+    <span class="bb-band__rule"></span>
+    <span class="bb-eyebrow bb-eyebrow--dark" id="bb-band-date">-</span>
   </div>
-</header>
+  <div class="bb-band__stats" id="bb-stats"></div>
+</section>
+
+<section class="bb-strip">
+  <div class="bb-strip__head">
+    <span class="bb-eyebrow">Underway</span>
+    <span class="bb-meta" id="bb-underway-sub"></span>
+  </div>
+  <div class="bb-tiles bb-rows" id="bb-underway"></div>
+</section>
 
 <main class="bb-main">
 
-  <div class="bb-stats" id="bb-stats"></div>
-
-  <div class="bb-cols">
-  <section class="bb-section">
-    <div class="bb-section__head">
-      <span class="fm-sign fm-sign--eyebrow">
-        <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
-        Captain's Call
-      </span>
-      <span class="fm-sign fm-sign--muted" id="bb-call-sub"></span>
-    </div>
-    <div class="bb-callwrap">
+  <div class="bb-colL">
+    <section class="bb-section">
+      <div class="bb-section__head">
+        <div>
+          <div class="bb-eyebrow">Captain's Call</div>
+          <h2 class="bb-section__title">Decide</h2>
+        </div>
+        <div class="bb-stacknav" id="bb-stacknav">
+          <span class="bb-meta bb-stacknav__count" id="bb-stack-count">-</span>
+          <button type="button" class="bb-stacknav__btn" id="bb-stack-prev" aria-label="Previous call">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button type="button" class="bb-stacknav__btn" id="bb-stack-next" aria-label="Next call">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="bb-call" id="bb-call"></div>
-      <!-- nav sits under the stack so the active card's top edge aligns with
-           the Charted Next card across the row -->
-      <div class="bb-stacknav">
-        <span class="bb-stacknav__count" id="bb-stack-count">-</span>
-        <button type="button" class="bb-stacknav__btn" id="bb-stack-prev" aria-label="Previous card">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <button type="button" class="bb-stacknav__btn" id="bb-stack-next" aria-label="Next card">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
+    </section>
+
+    <section class="bb-section">
+      <div class="bb-section__head">
+        <div>
+          <div class="bb-eyebrow">Landed</div>
+          <h2 class="bb-section__title">This week</h2>
+        </div>
       </div>
-    </div>
-  </section>
+      <div class="bb-rows bb-landed" id="bb-landed"></div>
+    </section>
+  </div>
 
   <section class="bb-section">
     <div class="bb-section__head">
-      <span class="fm-sign fm-sign--eyebrow">
-        <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-        Charted Next
-      </span>
-      <span class="fm-sign fm-sign--muted" id="bb-charted-sub"></span>
-    </div>
-    <div class="fm-card fm-card--warm">
-      <div class="bb-rows" id="bb-charted"></div>
-      <div class="bb-dispatch" id="bb-dispatch" hidden>
-        <span class="bb-dispatch__count" id="bb-dispatch-count">nothing picked</span>
-        <span class="bb-queued" id="bb-dispatch-queued">
-          <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-          queued
-        </span>
-        <button type="button" class="fm-btn fm-btn--sm fm-btn--gold" id="bb-dispatch-btn">Queue dispatch order</button>
+      <div>
+        <div class="bb-eyebrow">Charted Next</div>
+        <h2 class="bb-section__title">Queue</h2>
       </div>
+      <div class="bb-stacknav">
+        <button type="button" class="bb-linkcta" id="bb-collapse-all" data-state="open">Collapse all</button>
+        <button type="button" class="fm-btn fm-btn--sm fm-btn--primary" id="bb-dispatch-btn" disabled>Dispatch 0</button>
+      </div>
+    </div>
+    <div class="bb-meta" id="bb-charted-sub"></div>
+    <div class="bb-rows bb-charted" id="bb-charted"></div>
+    <div class="bb-actions" id="bb-dispatch" hidden>
+      <span class="bb-actions__count" id="bb-dispatch-count">pick queued work to dispatch</span>
+      <span class="bb-queued" id="bb-dispatch-queued">queued</span>
+    </div>
+    <div class="bb-actions" id="bb-remove" hidden>
+      <span class="bb-actions__count" id="bb-remove-count">nothing removed</span>
+      <span class="bb-queued" id="bb-remove-queued">queued</span>
+      <button type="button" class="fm-btn fm-btn--sm fm-btn--ghost" id="bb-remove-btn">Queue removals</button>
     </div>
   </section>
-  </div>
-
-  <div class="bb-cols">
-    <section class="bb-section">
-      <div class="bb-section__head">
-        <span class="fm-sign fm-sign--eyebrow">
-          <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10.189V14"/><path d="M12 2v3"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-8.188-3.639a2 2 0 0 0-1.624 0L3 14a11.6 11.6 0 0 0 2.81 7.76"/><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1s1.2 1 2.5 1c2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
-          Underway
-        </span>
-      </div>
-      <div class="fm-card"><div class="bb-rows" id="bb-underway"></div></div>
-    </section>
-
-    <section class="bb-section">
-      <div class="bb-section__head">
-        <span class="fm-sign fm-sign--eyebrow">
-          <svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
-          Recently Landed
-        </span>
-      </div>
-      <div class="fm-card"><div class="bb-rows" id="bb-landed"></div></div>
-    </section>
-  </div>
-
-  <footer class="bb-foot">
-    <span class="bb-meta-mono" id="bb-provenance">-</span>
-  </footer>
 
 </main>
+
+<footer class="bb-foot">
+  <span class="bb-meta bb-mono" id="bb-provenance">-</span>
+</footer>
 
 <!-- ONE SLOT. bin/fm-bearings-board.sh build injects the fresh
      fm-bearings-board.v1 payload in place of the placeholder below; everything
@@ -388,18 +476,15 @@ __FM_BEARINGS_BOARD_DATA__
     var main = document.querySelector(".bb-main");
     main.innerHTML = "";
     var card = document.createElement("div");
-    card.className = "fm-card fm-card--poster bb-decision";
-    var pad = document.createElement("div");
-    pad.className = "bb-decision__pad";
+    card.className = "fm-card bb-decision bb-error";
     var h = document.createElement("h3");
     h.className = "bb-decision__title";
     h.textContent = "This board could not load";
     var d = document.createElement("p");
     d.className = "bb-decision__detail";
     d.textContent = msg + " - ask firstmate to rebuild the board.";
-    pad.appendChild(h);
-    pad.appendChild(d);
-    card.appendChild(pad);
+    card.appendChild(h);
+    card.appendChild(d);
     main.appendChild(card);
   }
 
@@ -434,7 +519,19 @@ __FM_BEARINGS_BOARD_DATA__
     if (text != null) n.textContent = text;
     return n;
   }
-  function badge(tone, text) { return el("span", "fm-badge fm-badge--" + tone, text); }
+  function badge(tone, text, small) {
+    return el("span", "fm-badge fm-badge--" + tone + (small ? " fm-badge--sm" : ""), text);
+  }
+  function icon(cls, path) {
+    var n = el("span", cls);
+    n.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + path + '"/></svg>';
+    return n;
+  }
+  var CHEVRON = "m9 18 6-6-6-6";
+  var TICK = "M20 6 9 17l-5-5";
+  function chevron() { return icon("bb-chev", CHEVRON); }
+
   /* Warnings ride the charted feed for layout only; they are alarms, not work,
      so every count of queued work excludes them. */
   function isWarning(t) { return t && t.kind === "warning"; }
@@ -453,40 +550,47 @@ __FM_BEARINGS_BOARD_DATA__
   var chartedMoreQueued = data.charted_more || 0;
   var chartedMoreWarnings = data.charted_warning_more || 0;
   function utf8ByteLength(text) { return new TextEncoder().encode(text).length; }
-  var CHECK_SVG = '<svg class="fm-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
 
   document.getElementById("bb-provenance").textContent = data.schema + " · " + data.generated;
+  /* the band carries the date in the captain's terms, with the durable
+     generated stamp still readable in the footer */
+  var bandDate = data.generated;
+  try {
+    var parsed = new Date(data.generated);
+    if (!isNaN(parsed.getTime())) {
+      bandDate = parsed.toLocaleDateString(undefined,
+        { weekday: "long", day: "numeric", month: "long" });
+    }
+  } catch (e) { /* the raw stamp is a correct fallback */ }
+  document.getElementById("bb-band-date").textContent = bandDate;
 
-  /* stat strip */
+  /* band metrics: need you, underway, ready to dispatch, landed */
   var callTotal = data.captains_call.length;
+  var queuedRows = chartedQueued(data.charted);
+  var readyRows = queuedRows.filter(function (t) { return t.dispatchable; });
   var stats = [
-    { n: callTotal, l: "need you", call: true },
+    { n: callTotal, l: "need you", hot: true },
     { n: data.underway.length, l: "underway" },
-    { n: data.landed.length, l: "landed recently" },
-    { n: chartedQueued(data.charted).length + chartedMoreQueued, l: "charted next" }
+    { n: readyRows.length, l: "ready to dispatch" },
+    { n: data.landed.length, l: "landed" }
   ];
   var strip = document.getElementById("bb-stats");
   stats.forEach(function (s) {
-    var t = el("div", "bb-stat" + (s.call ? " bb-stat--call" : ""));
+    var t = el("div", "bb-stat" + (s.hot ? " bb-stat--hot" : ""));
     t.appendChild(el("span", "bb-stat__num", String(s.n)));
     t.appendChild(el("span", "bb-stat__label", s.l));
     strip.appendChild(t);
   });
-  document.getElementById("bb-call-sub").textContent =
-    callTotal ? callTotal + " item" + (callTotal === 1 ? "" : "s") + " wait on you, captain" : "nothing needs you, captain";
 
   /* Captain's Call deck: every item renders as the same full card */
   var deck = document.getElementById("bb-call");
-  function ctxRow(k, v, rec) {
-    var row = el("div", "bb-ctx__row" + (rec ? " bb-ctx__row--rec" : ""));
-    row.appendChild(el("span", "bb-ctx__k", k));
-    row.appendChild(el("span", "bb-ctx__v", v));
-    return row;
+  function ctxRow(k, v) {
+    var frag = [el("span", "bb-ctx__k", k), el("span", "bb-ctx__v", v)];
+    return frag;
   }
 
   data.captains_call.forEach(function (item) {
-    var card = el("div", "fm-card fm-card--poster bb-decision");
-    var pad = el("div", "bb-decision__pad");
+    var card = el("div", "fm-card bb-decision");
 
     var top = el("div", "bb-decision__top");
     if (item.type === "merge") {
@@ -496,23 +600,23 @@ __FM_BEARINGS_BOARD_DATA__
       top.appendChild(badge("solid", "decision"));
       top.appendChild(el("span", "bb-decision__repo", item.repo));
     }
-    pad.appendChild(top);
+    card.appendChild(top);
 
-    pad.appendChild(el("h3", "bb-decision__title", item.title));
+    card.appendChild(el("h3", "bb-decision__title", item.title));
 
     if (item.type === "merge") {
-      if (item.detail) pad.appendChild(el("p", "bb-decision__detail", item.detail));
+      if (item.detail) card.appendChild(el("p", "bb-decision__detail", item.detail));
       if (item.pr_url) {
         var pr = el("a", "bb-decision__link", item.pr_url);
         pr.href = item.pr_url; pr.target = "_blank"; pr.rel = "noopener";
-        pad.appendChild(pr);
+        card.appendChild(pr);
       }
     } else {
       /* the rec marker on the option itself carries the recommendation */
       var ctx = el("div", "bb-ctx");
-      if (item.about) ctx.appendChild(ctxRow("about", item.about));
-      if (item.decide) ctx.appendChild(ctxRow("decide", item.decide));
-      pad.appendChild(ctx);
+      if (item.about) ctxRow("About", item.about).forEach(function (n) { ctx.appendChild(n); });
+      if (item.decide) ctxRow("Decide", item.decide).forEach(function (n) { ctx.appendChild(n); });
+      card.appendChild(ctx);
     }
 
     var form = document.createElement("form");
@@ -528,25 +632,27 @@ __FM_BEARINGS_BOARD_DATA__
       if (o.hint) body.appendChild(el("span", "bb-opt__hint", o.hint));
       lab.appendChild(body);
       if (item.recommend_value && o.value === item.recommend_value) {
-        lab.appendChild(el("span", "bb-opt__rec", "rec"));
+        lab.appendChild(el("span", "bb-opt__rec", "recommended"));
       }
       opts.appendChild(lab);
     });
     form.appendChild(opts);
 
+    var foot = el("div", "bb-decision__foot");
+    var btn = el("button", "fm-btn fm-btn--sm fm-btn--primary", "Queue answer");
+    btn.type = "submit";
+    foot.appendChild(btn);
+
     if (item.allow_freeform) {
       var ff = document.createElement("input");
       ff.type = "text"; ff.name = "note"; ff.className = "bb-freeform";
-      ff.placeholder = item.freeform_hint || "or answer in your own words…";
-      form.appendChild(ff);
+      ff.placeholder = item.freeform_hint || "or answer in your own words";
+      foot.appendChild(ff);
     }
 
-    var foot = el("div", "bb-decision__foot");
-    var btn = el("button", "fm-btn fm-btn--sm " + (item.type === "merge" ? "fm-btn--gold" : "fm-btn--primary"), "Queue answer");
-    btn.type = "submit";
-    foot.appendChild(btn);
     var q = el("span", "bb-queued");
-    q.innerHTML = CHECK_SVG + " queued";
+    q.appendChild(icon("bb-row__check", TICK));
+    q.appendChild(el("span", null, "queued"));
     foot.appendChild(q);
     var answerLimit = el("span", "bb-limit");
     answerLimit.setAttribute("role", "alert");
@@ -587,48 +693,45 @@ __FM_BEARINGS_BOARD_DATA__
       setTimeout(function () { showCard(active < cards.length - 1 ? active + 1 : active); }, 450);
     });
 
-    pad.appendChild(form);
-    card.appendChild(pad);
+    card.appendChild(form);
     deck.appendChild(card);
   });
 
-  /* stack navigation: one card at a time, dealt off the pile */
+  /* deck navigation: one card at a time, flipped from the section header */
   var cards = Array.prototype.slice.call(deck.children);
   var active = 0;
   var stackCount = document.getElementById("bb-stack-count");
   var stackPrev = document.getElementById("bb-stack-prev");
   var stackNext = document.getElementById("bb-stack-next");
-  var stackNav = stackCount.parentNode;
+  var stackNav = document.getElementById("bb-stacknav");
   function showCard(i) {
     active = Math.max(0, Math.min(cards.length - 1, i));
     cards.forEach(function (c, j) { c.hidden = j !== active; });
     var answered = deck.querySelectorAll(".is-queued").length;
-    stackCount.textContent = "card " + (active + 1) + " of " + cards.length +
+    stackCount.textContent = (active + 1) + " of " + cards.length +
       (answered ? " · " + answered + " answered" : "");
     stackPrev.disabled = active === 0;
     stackNext.disabled = active === cards.length - 1;
-    /* the pile thins as the deal approaches the bottom */
-    deck.classList.toggle("bb-call--penult", active === cards.length - 2);
-    deck.classList.toggle("bb-call--last", active === cards.length - 1);
   }
   if (cards.length) {
     stackPrev.addEventListener("click", function () { showCard(active - 1); });
     stackNext.addEventListener("click", function () { showCard(active + 1); });
     showCard(0);
   } else {
-    deck.classList.add("bb-call--empty");
     deck.appendChild(el("div", "bb-empty", "Nothing needs your action right now."));
     stackNav.hidden = true;
   }
 
-  /* Underway */
+  /* Underway: one tile per live worker */
   var uw = document.getElementById("bb-underway");
+  document.getElementById("bb-underway-sub").textContent =
+    data.underway.length + " worker" + (data.underway.length === 1 ? "" : "s") + " live";
   if (!data.underway.length) uw.appendChild(el("div", "bb-empty", "Nothing is underway."));
   data.underway.forEach(function (t) {
     var row = el("div", "bb-row");
-    row.appendChild(badge(t.state === "working" ? "online" : "info", t.state));
+    row.appendChild(badge(t.state === "working" ? "online" : "warn", t.state));
     var main = el("div", "bb-row__main");
-    /* the snapshot's durable name-or-id label leads the row so a scan says
+    /* the snapshot's durable name-or-id label leads the tile so a scan says
        WHICH task this is; the run status keeps its place on the second line */
     main.appendChild(el("div", "bb-row__title", t.name));
     /* captain-facing rows name the repo; the internal task id shows only when
@@ -644,9 +747,7 @@ __FM_BEARINGS_BOARD_DATA__
   if (!data.landed.length) ld.appendChild(el("div", "bb-empty", "No recent completions are in the current baseline."));
   data.landed.forEach(function (t) {
     var row = el("div", "bb-row");
-    var chk = el("span", "bb-row__check");
-    chk.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    row.appendChild(chk);
+    row.appendChild(icon("bb-row__check", TICK));
     var main = el("div", "bb-row__main");
     main.appendChild(el("div", "bb-row__title", t.what));
     main.appendChild(el("div", "bb-row__sub", (t.repo || t.id) + " · " + t.owner));
@@ -659,58 +760,209 @@ __FM_BEARINGS_BOARD_DATA__
     ld.appendChild(row);
   });
 
-  /* Charted Next + dispatch picker */
+  /* ---- Charted Next: project groups of expandable rows ---- */
   var ch = document.getElementById("bb-charted");
-  var bar = document.getElementById("bb-dispatch");
-  var barCount = document.getElementById("bb-dispatch-count");
-  var barBtn = document.getElementById("bb-dispatch-btn");
+  var dispatchBar = document.getElementById("bb-dispatch");
+  var dispatchCount = document.getElementById("bb-dispatch-count");
+  var dispatchBtn = document.getElementById("bb-dispatch-btn");
+  var removeBar = document.getElementById("bb-remove");
+  var removeCount = document.getElementById("bb-remove-count");
+  var removeBtn = document.getElementById("bb-remove-btn");
+  var collapseAll = document.getElementById("bb-collapse-all");
+  var groups = [];
+  var removed = [];
   var anyPickable = false;
 
   function pickedIds() {
     return Array.prototype.map.call(ch.querySelectorAll(".bb-pick:checked"), function (c) { return c.value; });
   }
-  function refreshBar(limitMessage) {
+  function refreshDispatch(limitMessage) {
     var n = pickedIds().length;
-    barCount.textContent = limitMessage || (n ? n + " picked for dispatch" : "pick queued work to dispatch");
-    barBtn.disabled = !n;
+    dispatchCount.textContent = limitMessage || (n ? n + " picked for dispatch" : "pick queued work to dispatch");
+    dispatchBtn.textContent = "Dispatch " + n;
+    dispatchBtn.disabled = !n;
+  }
+  function refreshRemove(limitMessage) {
+    removeBar.hidden = removed.length === 0;
+    removeCount.textContent = limitMessage ||
+      (removed.length ? removed.length + " removed from the queue" : "nothing removed");
+    removeBtn.disabled = !removed.length;
   }
 
-  if (!chartedQueued(data.charted).length && !chartedMoreQueued) {
+  if (!queuedRows.length && !chartedMoreQueued) {
     ch.appendChild(el("div", "bb-empty", "Nothing is queued."));
   }
-  chartedOrder(data.charted).forEach(function (t) {
-    var row = el("div", "bb-row");
-    if (t.dispatchable && !isWarning(t)) {
-      anyPickable = true;
-      var pick = document.createElement("input");
-      pick.type = "checkbox"; pick.className = "bb-pick"; pick.value = t.id;
-      pick.setAttribute("aria-label", "Pick " + t.id + " for dispatch");
-      pick.addEventListener("change", function () {
-        if (pick.checked && utf8ByteLength(pickedIds().join(",")) > 512) {
-          pick.checked = false;
-          refreshBar("Selection limit reached (512 bytes maximum). ");
+
+  /* Rows group by project, newest filed first inside each group; the groups
+     themselves follow the order their newest row appears in. */
+  var ordered = chartedOrder(data.charted);
+  var groupIndex = {};
+  ordered.forEach(function (t) {
+    var name = t.repo || t.id;
+    if (!groupIndex[name]) {
+      groupIndex[name] = { name: name, rows: [] };
+      groups.push(groupIndex[name]);
+    }
+    groupIndex[name].rows.push(t);
+  });
+
+  groups.forEach(function (group) {
+    var box = el("div", "bb-group is-open");
+    var head = el("button", "bb-group__head");
+    head.type = "button";
+    head.setAttribute("aria-expanded", "true");
+    var nameWrap = el("span", "bb-group__name");
+    nameWrap.appendChild(chevron());
+    nameWrap.appendChild(el("span", "bb-eyebrow", group.name));
+    head.appendChild(nameWrap);
+    /* a group's counts are counts of queued WORK; the alarms riding this feed
+       are never queued and never ready */
+    var groupQueued = chartedQueued(group.rows).length;
+    var ready = group.rows.filter(function (t) { return t.dispatchable && !isWarning(t); }).length;
+    head.appendChild(el("span", "bb-meta", groupQueued + " queued · " + ready + " ready"));
+    var body = el("div", "bb-group__body");
+    function setGroupOpen(open) {
+      body.hidden = !open;
+      head.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) box.classList.add("is-open"); else box.classList.remove("is-open");
+    }
+    head.addEventListener("click", function () {
+      setGroupOpen(!box.classList.contains("is-open"));
+    });
+    box.appendChild(head);
+    box.appendChild(body);
+    group.box = box;
+    group.setOpen = setGroupOpen;
+
+    group.rows.forEach(function (t) {
+      var row = el("div", "bb-row");
+      var pick = null;
+      if (t.dispatchable && !isWarning(t)) {
+        anyPickable = true;
+        pick = document.createElement("input");
+        pick.type = "checkbox"; pick.className = "bb-pick"; pick.value = t.id;
+        pick.setAttribute("aria-label", "Pick " + t.id + " for dispatch");
+        pick.addEventListener("change", function () {
+          if (pick.checked && utf8ByteLength(pickedIds().join(",")) > 512) {
+            pick.checked = false;
+            refreshDispatch("Selection limit reached (512 bytes maximum). ");
+            return;
+          }
+          refreshDispatch();
+        });
+        row.appendChild(pick);
+      } else {
+        row.appendChild(el("span", "bb-pick-spacer"));
+      }
+
+      var main = el("div", "bb-row__main");
+      /* A warning is an alarm, not queued work: it states its reason flat on
+         the row, with no chevron, no detail panel and no removal, because
+         there is nothing here for the captain to dispatch or drop. */
+      if (isWarning(t)) {
+        main.appendChild(el("div", "bb-row__title", t.title));
+        main.appendChild(el("div", "bb-row__sub",
+          t.reason ? t.reason + " · " + (t.repo || t.id) : (t.repo || t.id)));
+        row.appendChild(main);
+        row.appendChild(badge("danger", "needs repair", true));
+        body.appendChild(row);
+        return;
+      }
+      var summary = el("button", "bb-row__summary");
+      summary.type = "button";
+      summary.setAttribute("aria-expanded", "false");
+      summary.appendChild(chevron());
+      summary.appendChild(el("div", "bb-row__title", t.title));
+      main.appendChild(summary);
+
+      var panel = el("div", "bb-panel");
+      panel.hidden = true;
+      var facts = el("div", "bb-panel__facts");
+      function fact(k, v) {
+        facts.appendChild(el("span", "bb-meta", k));
+        facts.appendChild(el("span", null, v));
+      }
+      if (t.filed) fact("Filed", t.filed);
+      if (t.task_kind) {
+        fact("Delivers", t.task_kind === "scout"
+          ? "A report in the task record, no code change."
+          : "A pull request on the project's default branch.");
+      }
+      fact("Project", t.repo || t.id);
+      if (t.context) fact("Context", t.context);
+      if (t.reason) fact("Blocked", t.reason);
+      /* the durable routing id IS the task record reference; the payload
+         carries no task URL, so nothing here is invented */
+      fact("Task record", t.id);
+      panel.appendChild(facts);
+
+      var panelFoot = el("div", "bb-panel__foot");
+      var rmBtn = el("button", "fm-btn fm-btn--xs fm-btn--ghost", "Remove from queue");
+      rmBtn.type = "button";
+      panelFoot.appendChild(rmBtn);
+      panel.appendChild(panelFoot);
+      main.appendChild(panel);
+      row.appendChild(main);
+
+      function setRowOpen(open) {
+        panel.hidden = !open;
+        summary.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) row.classList.add("is-open"); else row.classList.remove("is-open");
+      }
+      summary.addEventListener("click", function () {
+        setRowOpen(!row.classList.contains("is-open"));
+      });
+
+      if (t.task_kind) row.appendChild(badge(t.task_kind === "scout" ? "outline" : "solid", t.task_kind, true));
+      if (t.reason) row.appendChild(badge("warn", "waiting", true));
+
+      body.appendChild(row);
+
+      /* Removing strikes the row, clears its dispatch tick, and offers Undo.
+         Undo before the removals are sent takes the id back out. */
+      var undo = el("div", "bb-undo");
+      undo.hidden = true;
+      undo.appendChild(el("span", null,
+        "Removed from the queue. Firstmate drops it from the backlog when you send."));
+      var undoBtn = el("button", "bb-linkcta", "Undo");
+      undoBtn.type = "button";
+      undo.appendChild(undoBtn);
+      body.appendChild(undo);
+
+      rmBtn.addEventListener("click", function () {
+        if (removed.indexOf(t.id) !== -1) return;
+        var next = removed.concat([t.id]).join(",");
+        if (utf8ByteLength(next) > 512) {
+          refreshRemove("Removal limit reached (512 bytes maximum). ");
           return;
         }
-        refreshBar();
+        removed.push(t.id);
+        row.classList.add("is-removed");
+        setRowOpen(false);
+        if (pick) { pick.checked = false; pick.disabled = true; }
+        undo.hidden = false;
+        refreshDispatch();
+        refreshRemove();
       });
-      row.appendChild(pick);
-    } else {
-      row.appendChild(el("span", "bb-pick-spacer"));
-    }
-    var main = el("div", "bb-row__main");
-    main.appendChild(el("div", "bb-row__title", t.title));
-    /* second line keeps the title uncrowded in the half-width column */
-    var chSub = t.repo || t.id;
-    main.appendChild(el("div", "bb-row__sub", t.reason ? t.reason + " · " + chSub : chSub));
-    row.appendChild(main);
-    if (isWarning(t)) row.appendChild(badge("danger", "needs repair"));
-    else if (t.reason) row.appendChild(badge("warn", "waiting"));
-    ch.appendChild(row);
+      undoBtn.addEventListener("click", function () {
+        var at = removed.indexOf(t.id);
+        if (at !== -1) removed.splice(at, 1);
+        row.classList.remove("is-removed");
+        if (pick) pick.disabled = false;
+        undo.hidden = true;
+        refreshRemove();
+      });
+    });
+
+    ch.appendChild(box);
   });
-  var chartedShown = chartedQueued(data.charted).length;
+
+  var chartedShown = queuedRows.length;
   var chartedTotal = chartedShown + chartedMoreQueued;
   document.getElementById("bb-charted-sub").textContent =
-    chartedMoreQueued ? "showing " + chartedShown + " of " + chartedTotal : "";
+    chartedMoreQueued
+      ? "showing " + chartedShown + " of " + chartedTotal + " queued · " + readyRows.length + " ready"
+      : (chartedShown ? chartedShown + " queued · " + readyRows.length + " ready" : "");
   if (chartedMoreQueued) {
     ch.appendChild(el("span", "bb-morechip", "+" + chartedMoreQueued + " more queued - ask firstmate for the full chart"));
   }
@@ -718,28 +970,56 @@ __FM_BEARINGS_BOARD_DATA__
     ch.appendChild(el("span", "bb-morechip", "+" + chartedMoreWarnings + " more repair warning" + (chartedMoreWarnings === 1 ? "" : "s") + " - ask firstmate for the full chart"));
   }
 
+  collapseAll.addEventListener("click", function () {
+    var open = collapseAll.getAttribute("data-state") === "open";
+    groups.forEach(function (g) { g.setOpen(!open); });
+    collapseAll.setAttribute("data-state", open ? "closed" : "open");
+    collapseAll.textContent = open ? "Expand all" : "Collapse all";
+  });
+
   if (anyPickable) {
-    bar.hidden = false;
-    refreshBar();
-    barBtn.addEventListener("click", function () {
+    dispatchBar.hidden = false;
+    refreshDispatch();
+    dispatchBtn.addEventListener("click", function () {
       var ids = pickedIds();
       var dispatchAnswer = ids.join(",");
       if (!ids.length) return;
       if (utf8ByteLength(dispatchAnswer) > 512) {
-        refreshBar("Selection is too long to queue (512 bytes maximum). ");
+        refreshDispatch("Selection is too long to queue (512 bytes maximum). ");
         return;
       }
       if (window.lavish && window.lavish.queuePrompt) {
         window.lavish.queuePrompt(
           "Dispatch order - start this queued work now: " + ids.join(", "),
-          { tag: "choice", text: "Dispatch: " + ids.join(", "), element: bar,
+          { tag: "choice", text: "Dispatch: " + ids.join(", "), element: dispatchBar,
             queueKey: "dispatch.charted",
             data: { question: "dispatch.charted", answer: dispatchAnswer } }
         );
       }
-      bar.classList.add("is-queued");
+      dispatchBar.classList.add("is-queued");
     });
+  } else {
+    dispatchBtn.disabled = true;
   }
+
+  refreshRemove();
+  removeBtn.addEventListener("click", function () {
+    var removeAnswer = removed.join(",");
+    if (!removed.length) return;
+    if (utf8ByteLength(removeAnswer) > 512) {
+      refreshRemove("Removal list is too long to queue (512 bytes maximum). ");
+      return;
+    }
+    if (window.lavish && window.lavish.queuePrompt) {
+      window.lavish.queuePrompt(
+        "Remove from the queue - drop this queued work from the backlog: " + removed.join(", "),
+        { tag: "choice", text: "Remove: " + removed.join(", "), element: removeBar,
+          queueKey: "remove.charted",
+          data: { question: "remove.charted", answer: removeAnswer } }
+      );
+    }
+    removeBar.classList.add("is-queued");
+  });
   } catch (e) {
     renderBoardError("The board data could not be rendered");
   }

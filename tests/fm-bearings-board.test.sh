@@ -301,8 +301,132 @@ test_build_refuses_malformed_payloads_before_touching_the_board() {
   set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
   [ "$rc" -ne 0 ] || fail "a non-HTTPS Landed PR URL was accepted"
 
+  write_valid_payload "$data"
+  jq '.charted[0].task_kind = "investigation"' "$data" > "$data.tmp" && mv "$data.tmp" "$data"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "an unknown charted task_kind was accepted"
+
+  write_valid_payload "$data"
+  jq '.charted[0].context = 12' "$data" > "$data.tmp" && mv "$data.tmp" "$data"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a non-string charted context was accepted"
+
   assert_absent "$board" "a refused payload still produced a board"
   pass "build refuses malformed payloads before touching the board"
+}
+
+test_charted_task_kind_and_context_are_optional_and_reach_the_board() {
+  local home data
+  home=$(make_home chartedkind-extra)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  jq '.charted = [
+        {"id":"a","repo":"sample","title":"No kind","reason":"","dispatchable":true},
+        {"id":"b","repo":"sample","title":"A ship","reason":"","dispatchable":true,
+         "task_kind":"ship","context":"The gate drops the last chunk."},
+        {"id":"c","repo":"sample","title":"A scout","reason":"","dispatchable":true,
+         "task_kind":"scout","context":null}
+      ]' "$data" > "$data.tmp" && mv "$data.tmp" "$data"
+  run_board "$home" build "$data" >/dev/null \
+    || fail "an omitted, ship, and scout charted task_kind was refused"
+  extract_payload "$home/.lavish/bearings-board.html" | jq -e '
+    ([.charted[] | .task_kind // "(none)"]) == ["(none)", "ship", "scout"]
+      and (.charted[1].context == "The gate drops the last chunk.")
+  ' >/dev/null || fail "the built board did not carry the task kinds and context it was given"
+  pass "charted task_kind and context are optional and reach the built board"
+}
+
+# --- the home-local theme and logo ------------------------------------------
+
+test_a_board_with_no_home_theme_keeps_the_tracked_defaults() {
+  local home data board
+  home=$(make_home theme-absent)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  board="$home/.lavish/bearings-board.html"
+  run_board "$home" build "$data" >/dev/null || fail "a board with no home theme did not build"
+  grep -q '__FM_BEARINGS_BOARD_' "$board" \
+    && fail "a slot placeholder survived into the published board"
+  grep -q 'id="fm-board-theme"' "$board" \
+    || fail "the published board lost its theme block"
+  grep -q -- '--bb-accent:' "$board" \
+    || fail "the published board lost the tracked default tokens"
+  pass "a board with no home theme publishes the tracked neutral defaults"
+}
+
+test_a_home_theme_and_logo_are_inlined_into_the_board() {
+  local home data board
+  home=$(make_home theme-present)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  board="$home/.lavish/bearings-board.html"
+  mkdir -p "$home/config"
+  printf ':root { --bb-accent: #123456; --bb-dark: #0a0b0c; }\n' > "$home/config/board-theme.css"
+  printf '<svg viewBox="0 0 10 10"><title>house mark</title></svg>\n' > "$home/config/board-logo.svg"
+  run_board "$home" build "$data" >/dev/null || fail "a board with a home theme did not build"
+  grep -q '__FM_BEARINGS_BOARD_' "$board" \
+    && fail "a slot placeholder survived into the themed board"
+  grep -q -- '--bb-accent: #123456' "$board" \
+    || fail "the home theme did not reach the published board"
+  grep -q 'house mark' "$board" \
+    || fail "the home logo did not reach the published board"
+  # the override must land AFTER the tracked defaults, or it cannot win
+  [ "$(grep -n 'id="fm-board-theme"' "$board" | cut -d: -f1)" \
+    -lt "$(grep -n -- '--bb-accent: #123456' "$board" | cut -d: -f1)" ] \
+    || fail "the home theme was inlined before the tracked defaults"
+  pass "a home theme and logo are inlined into the published board"
+}
+
+test_build_refuses_a_theme_or_logo_that_cannot_be_inlined_safely() {
+  local home data rc out
+  home=$(make_home theme-unsafe)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  mkdir -p "$home/config"
+
+  printf ':root{}</style><script>alert(1)</script>\n' > "$home/config/board-theme.css"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a theme that ends the style block early was accepted"
+  assert_contains "$out" "</style" "the theme refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused theme still produced a board"
+  rm -f "$home/config/board-theme.css"
+
+  printf 'not an svg at all\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo that is not an SVG was accepted"
+  assert_contains "$out" "not an SVG" "the logo refusal did not say why: $out"
+
+  printf '<svg><script>alert(1)</script></svg>\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying a script was accepted"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+  pass "build refuses a theme or logo that cannot be inlined safely"
+}
+
+test_build_refuses_a_template_without_a_theme_or_logo_slot() {
+  local home data rc out
+  home=$(make_home badthemeslot)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  sed '/__FM_BEARINGS_BOARD_THEME__/d' \
+    "$ROOT/.agents/skills/bearings/assets/board-template.html" > "$home/no-theme.html"
+  set +e
+  out=$(FM_BEARINGS_BOARD_TEMPLATE="$home/no-theme.html" run_board "$home" build "$data" 2>&1)
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "a template with no theme slot was accepted"
+  assert_contains "$out" "theme slot" "the theme-slot refusal did not say why: $out"
+
+  sed '/__FM_BEARINGS_BOARD_LOGO__/d' \
+    "$ROOT/.agents/skills/bearings/assets/board-template.html" > "$home/no-logo.html"
+  set +e
+  out=$(FM_BEARINGS_BOARD_TEMPLATE="$home/no-logo.html" run_board "$home" build "$data" 2>&1)
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "a template with no logo slot was accepted"
+  assert_contains "$out" "logo slot" "the logo-slot refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused template still produced a board"
+  pass "build refuses a template without a theme or a logo slot"
 }
 
 test_build_injects_binds_then_arms() {
@@ -780,6 +904,11 @@ test_build_refuses_a_nondecision_reconcile_value() {
 test_path_is_stable_and_home_scoped
 test_build_refuses_malformed_payloads_before_touching_the_board
 test_charted_kind_is_optional_and_accepts_both_values
+test_charted_task_kind_and_context_are_optional_and_reach_the_board
+test_a_board_with_no_home_theme_keeps_the_tracked_defaults
+test_a_home_theme_and_logo_are_inlined_into_the_board
+test_build_refuses_a_theme_or_logo_that_cannot_be_inlined_safely
+test_build_refuses_a_template_without_a_theme_or_logo_slot
 test_build_injects_binds_then_arms
 test_registration_cannot_consume_before_any_origin_binding
 test_build_does_not_bind_or_arm_when_session_start_fails

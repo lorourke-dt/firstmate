@@ -105,6 +105,11 @@ Compose the payload from the same snapshot with the same ranking judgment as the
 - `charted_more` counts omitted queued rows only, while `charted_warning_more` counts omitted warning rows only; keep both counts separate whenever the board payload truncates Charted Next.
 - Every Underway row copies the task-identifying `in_flight.name` from the snapshot into an explicit `name` field, which the board leads with while keeping the run status on its second line.
   The snapshot command's header owns its durable-title-or-id normalization; never replace the projected label with run status or invent another label.
+- Every Charted Next row for real queued work copies the snapshot gate's `task_kind` into `task_kind`, either `"ship"` or `"scout"`, which the board renders as the row's kind badge and as the "Delivers" line in the row's expanded panel.
+  Omit it, or pass null, when the backlog item declares no kind, and the board then shows no kind badge and no Delivers line rather than guessing one.
+  A warning row never carries it.
+- A Charted Next row MAY carry `context`, a plain-text line from the backlog item's own body that the expanded panel shows beside the filed date, project and blocker.
+  Copy the snapshot gate's `context`; omit it or pass null when the item has no body, and never compose one from elsewhere.
 - Every Charted Next row copies the snapshot gate's durable filed date into `filed`, and the board orders the section by it, newest filed first.
   Follow `bin/fm-bearings-board.sh`'s payload contract for the accepted format.
   Omit it or pass null for a row with no durable filed date - the main-inventory or return-catchup warning, an unavailable secondmate home, or a queued row filed before dates were recorded - and the board keeps those rows in payload order after every dated row.
@@ -129,6 +134,8 @@ Route the non-decision keys yourself:
 
 - `merge.<task-id>` is the captain's explicit merge order; follow the merge ruling below.
 - `dispatch.charted` carries comma-separated task ids the captain picked to start now; verify each id against the current backlog - still queued, blocker and time gate actually clear - then dispatch through the normal lifecycle, and report any id that no longer qualifies instead of forcing it.
+- `remove.charted` carries comma-separated task ids the captain removed from the queue, and firstmate routes it: verify each id is still queued in the backlog, then drop it with `bin/fm-tasks-axi.sh rm <id>`, echo every removal in chat, and report any id that no longer qualifies - already started, already done, or still blocking another item - instead of forcing it.
+  Nothing removes a backlog item without that firstmate step; the board only records what the captain struck.
 
 After handling, rebuild the board from a fresh snapshot so acted-on items leave Captain's Call, and echo every action taken in chat so the board and chat never diverge silently.
 
