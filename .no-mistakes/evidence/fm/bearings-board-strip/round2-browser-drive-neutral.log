@@ -1,0 +1,45 @@
+PASS band shows four metrics :: ["3need you","3underway","4ready to dispatch","3landed"]
+PASS no headline/summary paragraph in band
+PASS band shows the date :: Tuesday, September 15
+PASS band wordmark reads Bearings
+INFO band background rgb(36, 44, 53)
+PASS underway strip has one tile per worker :: ["workingLedger migration runnerwriting rollback tests · ship · ledger","workingPortal auth options scoutcomparing OIDC providers · scout · portal","stalledDNS failover cutoverwaiting on a rate-limited API · ship · infra"]
+PASS underway tile leads with the task name
+PASS two equal columns side by side :: {"l":636,"r":636,"sameRow":true}
+PASS captain's call shows 1 of 3 :: 1 of 3
+PASS only one decision visible :: ["Which schema migration path for the ledger?"]
+PASS prev disabled at first
+PASS next flips to 2 of 3 :: ["Merge ledger PR #42"]
+PASS next flips to 3 of 3 and next disables
+PASS clicking next at end stays on 3 of 3
+PASS prev flips back to 2 of 3 :: ["Merge ledger PR #42"]
+PASS queuing an answer records selection :: [{"prompt":"Captain's Call answer - Which schema migration path for the ledger?: squash","data":{"schema":"fm-bearings-answer.v1","question":"decision.ledger-schema","selection":"squash","note":""}}]
+PASS deck deals next card and counts answered :: 2 of 3 · 1 answered
+PASS 512-byte guard refuses an oversize answer :: Answer is too long to queue (512 bytes maximum).
+PASS oversize answer was not queued
+PASS landed rows show check, completion, project, PR link :: [{"t":"CSV export for quarterly statementsledger · secondmate-a#38","pr":"https://github.com/example/ledger/pull/38","check":true},{"t":"Cut portal cold start by 40%portal · main#117","pr":"https://github.com/example/portal/pull/117","check":true},{"t":"Structured logging for the ingest workersinfra · main","check":true}]
+PASS landed row without PR shows no link
+PASS queue groups by project (warning gets its own id-named group) :: [{"name":"ledger","rows":2,"open":true},{"name":"portal","rows":2,"open":true},{"name":"infra","rows":1,"open":true},{"name":"main-inventory","rows":1,"open":true}]
+PASS rows carry scout/ship badges and waiting when blocked :: ["ship","scout|waiting","ship","","scout","needs repair"]
+PASS warning row is flat with needs-repair badge and no panel :: {"inGroup":true,"badge":["needs repair"],"hasPanel":false}
+PASS collapse all folds every group :: {"afterCollapse":[false,false,false,false],"bodyVisible":[false,false,false,false]}
+PASS expand all opens every group
+PASS a single group head collapses just that group :: [true,false,true,true]
+PASS expanded row shows filed, delivers, project, context, task record :: {"Filed":"2026-09-14","Delivers":"A pull request on the project's default branch.","Project":"ledger","Context":"Totals drift between the ledger and the bank feed after weekend batches.","Task record":"ledger-recon-11"}
+PASS blocked scout row shows Blocked and scout Delivers :: {"Filed":"2026-09-12","Delivers":"A report in the task record, no code change.","Project":"ledger","Blocked":"blocked by ledger-recon-11","Task record":"ledger-audit-12"}
+PASS blocked row has no dispatch checkbox
+PASS dispatch button counts picks :: Dispatch 2
+PASS dispatch queues picked ids :: {"prompt":"Dispatch order - start this queued work now: ledger-recon-11, portal-i18n-4","queueKey":"dispatch.charted","data":{"question":"dispatch.charted","answer":"ledger-recon-11,portal-i18n-4"}}
+PASS remove strikes row, clears its tick, offers Undo :: {"struck":true,"deco":"line-through","tick":false,"tickDisabled":true}
+PASS removal not queued before send
+PASS dispatch count drops after removal
+PASS queue removals sends the struck id :: ["ledger-recon-11"]
+PASS Undo stays enabled after queueing
+PASS undo after send re-queues an explicit empty list :: [""]
+PASS undo un-strikes row
+PASS editing after send keeps a single replaced record with both ids :: ["ledger-recon-11,portal-legacy-6"]
+PASS undoing one leaves the other in the last list :: ["portal-legacy-6"]
+INFO tokens {"accent":"#3f5c8a","font":"ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif","band":"rgb(36, 44, 53)","cardRadius":"0px","ctlRadius":"6px","bgImg":"none"}
+PASS no gradients or textures on body
+INFO page errors: []
+PASS no page errors

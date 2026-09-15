@@ -1,0 +1,11 @@
+## themed build
+board: /tmp/nm-board-themed/.lavish/bearings-board.html
+session:
+  status: opened
+session: live
+served: /tmp/nm-board-themed/.lavish/bearings-board.html
+bound: lavish-5f9e502dbb6b4497
+armed: lavish-5f9e502dbb6b4497
+listening: live
+exit=0
+2

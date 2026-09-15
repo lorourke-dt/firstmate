@@ -1,0 +1,11 @@
+ok - path prints the stable home-scoped board location
+ok - build refuses malformed payloads before touching the board
+ok - charted kind is optional and accepts queued and warning
+ok - charted task_kind and context are optional and reach the built board
+ok - a board with no home theme publishes the tracked neutral defaults
+ok - a home theme and logo are inlined into the published board
+ok - build refuses a theme or logo that cannot be inlined safely
+ok - build refuses a template without a theme or a logo slot
+ok - build injects the payload, binds any-origin, then arms the source
+fm-captain-hold: compatible tasks-axi is required
+not ok - could not create the order-proof captain hold

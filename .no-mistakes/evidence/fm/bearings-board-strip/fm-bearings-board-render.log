@@ -1,0 +1,19 @@
+ok - an underway row leads with the task name and still reports its run status
+ok - an underway identifier label is not replaced by run status
+ok - charted next renders the most recently filed work first
+ok - charted rows with no filed date follow the dated rows in payload order
+ok - a warning row badges needs repair while queued work keeps waiting
+ok - the band and group counts count queued work only, and still render warnings
+ok - a warning-only board reports nothing queued and still shows the warning
+ok - omitted warnings remain separate from omitted queued work
+ok - an omitted kind renders exactly as queued work always did
+ok - the band reports need you, underway, ready to dispatch and landed
+ok - a queue row badges its task kind and opens filed, delivers, context and blocker
+ok - a queue row with no task kind shows no kind badge and no delivers row
+ok - queue rows group by project, newest filed first inside each group
+ok - an alarm stays a flat row with no detail panel and nothing to remove
+ok - striking a row queues nothing until the captain sends
+ok - queue removals hands firstmate every struck id
+ok - undo after queueing retracts the id from the queued removal
+ok - undoing every removal after queueing queues an explicit nothing
+ok - editing the list after queueing ends on the last list

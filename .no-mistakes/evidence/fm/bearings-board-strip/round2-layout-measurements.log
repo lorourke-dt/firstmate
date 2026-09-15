@@ -1,0 +1,38 @@
+{
+ "underwayDisplay": "grid",
+ "tiles": [
+  {
+   "x": 56,
+   "y": 207,
+   "w": 432
+  },
+  {
+   "x": 504,
+   "y": 207,
+   "w": 432
+  },
+  {
+   "x": 952,
+   "y": 207,
+   "w": 432
+  }
+ ],
+ "twoBadgeRows": [
+  {
+   "h": 45,
+   "badges": [
+    {
+     "text": "scout",
+     "x": 1252,
+     "y": 621
+    },
+    {
+     "text": "waiting",
+     "x": 1315,
+     "y": 621
+    }
+   ]
+  }
+ ]
+}
+expanded: {"panelTop":653,"badges":[621,621]}

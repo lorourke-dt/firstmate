@@ -1,0 +1,20 @@
+{
+  "accentVar": "#bb202a",
+  "bodyFont": "Facit, \"DejaVu Sans\", sans-serif",
+  "bandBg": "rgb(36, 44, 53)",
+  "primaryBtnBg": "rgb(187, 32, 42)",
+  "primaryBtnRadius": "6px",
+  "cardRadius": "10px",
+  "tileRadius": "10px",
+  "hairline": "0px",
+  "eyebrow": {
+    "tt": "uppercase",
+    "ls": "1.82px"
+  },
+  "logoInlined": true,
+  "logoFill": "#bb202a",
+  "bodyBgImage": "none",
+  "bgWhite": "rgb(255, 255, 255)",
+  "statNumeralSize": "44px",
+  "errors": []
+}

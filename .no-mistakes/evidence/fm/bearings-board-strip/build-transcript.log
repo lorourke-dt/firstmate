@@ -1,0 +1,8 @@
+board: /tmp/nm-board-home/.lavish/bearings-board.html
+session:
+  status: opened
+session: live
+served: /tmp/nm-board-home/.lavish/bearings-board.html
+bound: lavish-d5f377ede02182a0
+armed: lavish-d5f377ede02182a0
+listening: live

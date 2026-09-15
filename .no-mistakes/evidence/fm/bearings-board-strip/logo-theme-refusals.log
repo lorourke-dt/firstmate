@@ -1,0 +1,30 @@
+multi-line onload handler
+  exit=1  board_exists=no
+  fm-bearings-board: board logo carries an inline event handler attribute: /tmp/nm-board-adv/config/board-logo.svg
+multi-line animate element
+  exit=1  board_exists=no
+  fm-bearings-board: board logo carries a script or javascript: URL: /tmp/nm-board-adv/config/board-logo.svg
+foreignObject iframe srcdoc
+  exit=1  board_exists=no
+  fm-bearings-board: board logo carries an HTML-embedding element (foreignObject, iframe, embed or object), which runs its content inside the board: /tmp/nm-board-adv/config/board-logo.svg
+entity-encoded javascript href
+  exit=1  board_exists=no
+  fm-bearings-board: board logo carries a script or javascript: URL: /tmp/nm-board-adv/config/board-logo.svg
+hex-entity + NewLine javascript href
+  exit=1  board_exists=no
+  fm-bearings-board: board logo carries a script or javascript: URL: /tmp/nm-board-adv/config/board-logo.svg
+entity-encoded script tag
+  exit=1  board_exists=no
+  fm-bearings-board: board logo carries a script or javascript: URL: /tmp/nm-board-adv/config/board-logo.svg
+embed element split across lines
+  exit=1  board_exists=no
+  fm-bearings-board: board logo carries an HTML-embedding element (foreignObject, iframe, embed or object), which runs its content inside the board: /tmp/nm-board-adv/config/board-logo.svg
+not an svg (html)
+  exit=1  board_exists=no
+  fm-bearings-board: board logo is not an SVG element: /tmp/nm-board-adv/config/board-logo.svg
+benign pretty-printed exporter svg (accepted)
+  exit=0  board_exists=yes
+  
+theme with </style
+  exit=1  board_exists=no
+  fm-bearings-board: board theme carries </style, which would end the theme block early: /tmp/nm-board-adv/config/board-theme.css

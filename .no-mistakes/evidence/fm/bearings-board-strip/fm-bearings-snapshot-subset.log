@@ -1,0 +1,5 @@
+ok - newest filed gates are selected before snapshot bounds
+ok - Underway rows carry the durable task name and gates carry their filed date
+ok - gate rows carry the backlog task kind and the item prose, never its bookkeeping, as context
+ok - queued body prose never hides an item from the board
+ok - TOON and JSON are parity representations of the same model
