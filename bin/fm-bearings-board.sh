@@ -78,6 +78,10 @@
 # that date with a UTC timestamp) the template orders the section by, newest
 # first; a row with no comparable date keeps its payload order after every dated
 # row. Anything else in that field refuses rather than sorting on garbage.
+# A Charted Next row MAY also carry `task_kind` ("ship" or "scout", or null),
+# which the template renders as the row's kind badge and its expanded
+# "Delivers" line, and `context` (a plain-text string, or null), the item's
+# own prose shown in the expanded panel; any other value in either refuses.
 #
 # The board path is stable - $FM_HOME/.lavish/bearings-board.html - so a
 # re-invocation rebuilds the same file in place, which keeps the same Lavish
