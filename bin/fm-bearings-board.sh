@@ -78,12 +78,41 @@
 # that date with a UTC timestamp) the template orders the section by, newest
 # first; a row with no comparable date keeps its payload order after every dated
 # row. Anything else in that field refuses rather than sorting on garbage.
+# A Charted Next row MAY also carry `task_kind` ("ship" or "scout", or null),
+# which the template renders as the row's kind badge and its expanded
+# "Delivers" line, and `context` (a plain-text string, or null), the item's
+# own prose shown in the expanded panel; any other value in either refuses.
 #
 # The board path is stable - $FM_HOME/.lavish/bearings-board.html - so a
 # re-invocation rebuilds the same file in place, which keeps the same Lavish
 # session URL and the same canonical process-event source id. Injection escapes
 # every `<` in the compact JSON as the \u003c string escape, so a payload string
 # containing "</script>" can never terminate the data block early.
+#
+# HOME-LOCAL THEME AND LOGO. The tracked template ships neutral defaults - a
+# system sans stack, a neutral dark band, a restrained accent, and a plain
+# "Bearings" wordmark - because a licensed typeface and a company palette or
+# logo are brand assets that must not be committed to this public repository.
+# A home re-themes the board with two optional gitignored files, inlined into
+# their own slots at build time:
+#
+#   $FM_HOME/config/board-theme.css   CSS inlined into <style id="fm-board-theme">
+#                                     AFTER the tracked defaults, so redefining
+#                                     the board's :root custom properties is all
+#                                     it takes. Refused when it carries "</style",
+#                                     which would end the block early.
+#   $FM_HOME/config/board-logo.svg    an SVG inlined in place of the logo slot,
+#                                     beside the wordmark. Refused unless it is
+#                                     an <svg> element, and refused when it
+#                                     carries a script, a javascript: URL, an
+#                                     inline on* event handler, an HTML-embedding
+#                                     element, or a SMIL animation element that
+#                                     can set attributes - each matched across
+#                                     line breaks and character references.
+#
+# Either file absent is normal: the slot is replaced by nothing and the tracked
+# neutral default stands. docs/configuration.md owns the operator-facing
+# description of both files.
 #
 # FM_BEARINGS_BOARD_TEMPLATE overrides the shipped template path (tests only).
 set -eu
@@ -94,6 +123,8 @@ FM_HOME="${FM_HOME:-$FM_ROOT}"
 
 TEMPLATE="${FM_BEARINGS_BOARD_TEMPLATE:-$SCRIPT_DIR/../.agents/skills/bearings/assets/board-template.html}"
 PLACEHOLDER='__FM_BEARINGS_BOARD_DATA__'
+THEME_PLACEHOLDER='__FM_BEARINGS_BOARD_THEME__'
+LOGO_PLACEHOLDER='__FM_BEARINGS_BOARD_LOGO__'
 BOARD_SCHEMA=fm-bearings-board.v1
 
 usage() {
@@ -128,6 +159,8 @@ validate_payload() {  # <data.json>
     def optional_filed:
       (has("filed") | not) or (.filed == null) or (.filed | valid_filed);
     def optional_string($name): (has($name) | not) or (.[$name] | type == "string");
+    def optional_nullable_string($name):
+      (has($name) | not) or (.[$name] == null) or (.[$name] | type == "string");
     def optional_https_url($name):
       (has($name) | not)
       or (.[$name]
@@ -182,6 +215,9 @@ validate_payload() {  # <data.json>
       and (.title | nonempty_string) and (.reason | type == "string")
       and (.dispatchable | type == "boolean")
       and ((has("kind") | not) or (.kind == "queued" or .kind == "warning"))
+      and ((has("task_kind") | not) or (.task_kind == null)
+        or (.task_kind == "ship" or .task_kind == "scout"))
+      and optional_nullable_string("context")
       and optional_filed
       and (if .kind == "warning" then .dispatchable == false else true end);
     type == "object"
@@ -357,8 +393,71 @@ await_source_owner() {  # <source-id>
   printf '%s\n' "${owner:-none}"
 }
 
+# --- home-local theme and logo -----------------------------------------------
+# Both are optional captain-owned files under $FM_HOME/config/, inlined into
+# their own slot. Each is refused rather than sanitized, because a file that
+# cannot be inlined safely is a configuration mistake to report, not bytes to
+# silently rewrite.
+
+board_theme_css() {  # prints the theme CSS, or nothing
+  local file="$FM_HOME/config/board-theme.css"
+  [ -f "$file" ] && [ ! -L "$file" ] || return 0
+  # `</style` is the only sequence that can end the block early.
+  if grep -qiF '</style' "$file"; then
+    fail "board theme carries </style, which would end the theme block early: $file"
+  fi
+  cat "$file"
+}
+
+board_logo_svg() {  # prints the logo SVG, or nothing
+  local file="$FM_HOME/config/board-logo.svg" flat decoded
+  [ -f "$file" ] && [ ! -L "$file" ] || return 0
+  # Every refusal below is matched against two views of the file, because the
+  # browser reads both: one with line breaks folded to spaces, since an
+  # exporter may break a tag or an attribute across lines, and one with
+  # character references resolved and the tab/CR/LF a URL parser discards
+  # removed, since `&#106;avascript:` and `java&NewLine;script:` both reach it
+  # as a javascript: scheme.
+  flat=$(tr '\n\r' '  ' < "$file") || fail "board logo could not be read: $file"
+  decoded=$(perl -0pe '
+    BEGIN { %n = (colon => ":", Tab => "\t", NewLine => "\n",
+                  lt => "<", gt => ">", sol => "/"); }
+    s/&#([0-9]+);?/chr($1)/ge;
+    s/&#[xX]([0-9a-fA-F]+);?/chr(hex($1))/ge;
+    s/&([a-zA-Z]+);/exists $n{$1} ? $n{$1} : "&$1;"/ge;
+    tr Z\t\n\rZZd;
+  ' < "$file") || fail "board logo could not be decoded: $file"
+  logo_carries() { printf '%s\n%s' "$flat" "$decoded" | grep -qiE "$1"; }
+  logo_carries '<[[:space:]]*svg[[:space:]/>]' \
+    || fail "board logo is not an SVG element: $file"
+  if logo_carries '<[[:space:]]*(foreignObject|iframe|embed|object)[[:space:]/>]'; then
+    fail "board logo carries an HTML-embedding element (foreignObject, iframe, embed or object), which runs its content inside the board: $file"
+  fi
+  if logo_carries '<[[:space:]]*script[[:space:]/>]|javascript:'; then
+    fail "board logo carries a script or javascript: URL: $file"
+  fi
+  if logo_carries '(^|[[:space:]"'"'"'/])on[a-z]+[[:space:]]*='; then
+    fail "board logo carries an inline event handler attribute: $file"
+  fi
+  if logo_carries '<[[:space:]]*(animateTransform|animate|set)[[:space:]/>]'; then
+    fail "board logo carries a SMIL animation element (animate, animateTransform or set): $file"
+  fi
+  cat "$file"
+}
+
+# Replace one whole-line placeholder with the given text, refusing rather than
+# publishing a board that still carries the slot.
+inject_slot() {  # <file> <placeholder> <replacement>
+  local file=$1 placeholder=$2
+  FM_SLOT_TEXT="$3" FM_SLOT_NAME="$placeholder" perl -i -pe '
+    BEGIN { $slot = $ENV{FM_SLOT_NAME}; $text = $ENV{FM_SLOT_TEXT}; }
+    $_ = $text eq "" ? "" : "$text\n" if /\A\Q$slot\E\n?\z/;
+  ' "$file" || return 1
+  ! grep -qxF "$placeholder" "$file"
+}
+
 command_build() {
-  local data=${1-} board json tmp sid extracted effective owner version pre_reopen_owner
+  local data=${1-} board json tmp sid extracted effective owner version pre_reopen_owner theme logo
   [ "$#" -eq 1 ] || { usage >&2; exit 2; }
   command -v jq >/dev/null 2>&1 || fail "jq is required"
   [ -f "$data" ] || fail "board data does not exist: $data"
@@ -367,6 +466,14 @@ command_build() {
   [ -f "$TEMPLATE" ] && [ ! -L "$TEMPLATE" ] || fail "board template is missing: $TEMPLATE"
   [ "$(grep -cxF "$PLACEHOLDER" "$TEMPLATE")" -eq 1 ] \
     || fail "board template does not carry exactly one data slot: $TEMPLATE"
+  [ "$(grep -cxF "$THEME_PLACEHOLDER" "$TEMPLATE")" -eq 1 ] \
+    || fail "board template does not carry exactly one theme slot: $TEMPLATE"
+  [ "$(grep -cxF "$LOGO_PLACEHOLDER" "$TEMPLATE")" -eq 1 ] \
+    || fail "board template does not carry exactly one logo slot: $TEMPLATE"
+  # `fail` inside a command substitution exits only that subshell, so each
+  # refusal is propagated explicitly rather than left to set -e.
+  theme=$(board_theme_css) || exit 1
+  logo=$(board_logo_svg) || exit 1
 
   effective=$(umask 077; mktemp "${TMPDIR:-/tmp}/fm-bearings-payload.XXXXXX") \
     || fail "cannot stage the board payload"
@@ -390,6 +497,14 @@ command_build() {
   if grep -qxF "$PLACEHOLDER" "$tmp"; then
     rm -f -- "$tmp"
     fail "the board data slot survived injection"
+  fi
+  if ! inject_slot "$tmp" "$THEME_PLACEHOLDER" "$theme"; then
+    rm -f -- "$tmp"
+    fail "cannot inject the board theme"
+  fi
+  if ! inject_slot "$tmp" "$LOGO_PLACEHOLDER" "$logo"; then
+    rm -f -- "$tmp"
+    fail "cannot inject the board logo"
   fi
   # Round-trip the injected payload back out of the built page, so a board that
   # would fail to parse in the browser fails here instead.

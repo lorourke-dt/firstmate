@@ -259,6 +259,23 @@ The flag is per home and is not inherited by secondmate homes, because stow cade
 Only the file's presence is read, so its contents are ignored; remove it to return to the default contract on the next pass.
 The skill text owns the marker spelling, the tick order, and the reinforcement rule.
 
+## Fleet board theme (config/board-theme.css, config/board-logo.svg)
+
+`/bearings lavish` builds its interactive fleet board from a tracked template whose every colour, radius, typeface and shadow is a CSS custom property.
+The tracked defaults are deliberately neutral - a system sans stack, a neutral dark band and a restrained accent - because a licensed typeface and a company palette or logo are brand assets that must not be committed to this public repository.
+A home gives the board its own look with two optional local, gitignored files under `config/`, which [`bin/fm-bearings-board.sh`](../bin/fm-bearings-board.sh) inlines into the board it publishes:
+
+- `config/board-theme.css` is inlined after the tracked defaults, so redefining the board's `:root` custom properties is all it takes and no layout rule needs restating.
+  It is refused when it carries `</style`, which would end the theme block early.
+- `config/board-logo.svg` is inlined in place of the board's logo slot, beside the "Bearings" wordmark.
+  It is refused unless it is an `<svg>` element, and refused when it carries a script, a `javascript:` URL, an inline `on*` event handler, an HTML-embedding element (`foreignObject`, `iframe`, `embed`, `object`), or a SMIL animation element that can set attributes (`animate`, `animateTransform`, `set`).
+  Each is matched across line breaks and through HTML character references, so neither a pretty-printer's layout nor an entity-encoded spelling changes the answer.
+  The refusal names what was found; the file is never silently rewritten.
+
+Either file absent is normal and is not a warning: that slot is replaced by nothing and the tracked neutral default stands.
+Both are read fresh on every board build, so re-theming takes effect on the next `/bearings lavish`.
+The script's own header owns the exact slot names and injection mechanics.
+
 ## Secondmate routes (data/secondmates.md)
 
 Persistent secondmate routes live locally in `data/secondmates.md`.

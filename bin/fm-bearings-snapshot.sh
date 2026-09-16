@@ -147,7 +147,7 @@ Default fields: schema, home, generated, prs, in_flight{id,kind,state,repo,name,
   secondmates{id,state,doing,provenance,freshness,age_seconds,contradiction,reason},
   secondmate_reconcile{id,spawn_gen,host,kind,ids},
   decisions_open{id,key,verb,summary,owner}, landed{id,what,artifact,owner},
-  gates{id,title,blocked_by,reason,owner,filed}, reports{id,path}, recorded_prs{id,url},
+  gates{id,title,blocked_by,reason,owner,task_kind,context,filed}, reports{id,path}, recorded_prs{id,url},
   unhealthy_endpoints{...} (only when non-empty), omitted{surface,reveal}.
 Default gates are selected newest filed first before their bound; undated gates
   retain input order after dated gates.
@@ -414,10 +414,20 @@ MODEL=$(printf '%s' "$SNAP" | jq \
            + ($base | fit($context_n - $title_n)))
         end
       end;
+  def body_context:
+    (.body_lines // []) as $lines
+    | if any($lines[]; test("^Resolution recorded by fm-(captain|decision)-hold\\.$")) then null
+      else ($lines
+            | map(select(test("^(Captain hold set:|Decision digest:|Resolution mode:|Routed identities:|local main$)") | not))
+            | join(" "))
+        | if . == "" then null else . end
+      end;
   def as_gate($owner):
     {id, title:(.title | trunc(60)),
      blocked_by:((.unresolved_blocker_ids // []) | if length > 0 then join(",") else "-" end | trunc(120)),
      reason:(hold_gate_reason | trunc(40)), owner:$owner,
+     task_kind:(if .kind == "ship" or .kind == "scout" then .kind else null end),
+     context:(body_context | if . == null then null else trunc(160) end),
      filed:((.since // null) | trunc(40))};
   def round_robin_landed($n):
     . as $groups
@@ -549,6 +559,8 @@ MODEL=$(printf '%s' "$SNAP" | jq \
          blocked_by:"-",
          reason:"away-return catch-up",
          owner:"(main)",
+         task_kind:null,
+         context:null,
          filed:null}]
      else [] end) as $return_catchup_gate
   | ((if (.main_inventory.valid == false) then
@@ -557,6 +569,8 @@ MODEL=$(printf '%s' "$SNAP" | jq \
           blocked_by:"-",
           reason:"main inventory",
           owner:"(main)",
+          task_kind:null,
+          context:null,
           filed:null}]
       else [] end)
      + [ .backlog.records[]

@@ -301,8 +301,209 @@ test_build_refuses_malformed_payloads_before_touching_the_board() {
   set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
   [ "$rc" -ne 0 ] || fail "a non-HTTPS Landed PR URL was accepted"
 
+  write_valid_payload "$data"
+  jq '.charted[0].task_kind = "investigation"' "$data" > "$data.tmp" && mv "$data.tmp" "$data"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "an unknown charted task_kind was accepted"
+
+  write_valid_payload "$data"
+  jq '.charted[0].context = 12' "$data" > "$data.tmp" && mv "$data.tmp" "$data"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a non-string charted context was accepted"
+
   assert_absent "$board" "a refused payload still produced a board"
   pass "build refuses malformed payloads before touching the board"
+}
+
+test_charted_task_kind_and_context_are_optional_and_reach_the_board() {
+  local home data
+  home=$(make_home chartedkind-extra)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  jq '.charted = [
+        {"id":"a","repo":"sample","title":"No kind","reason":"","dispatchable":true},
+        {"id":"b","repo":"sample","title":"A ship","reason":"","dispatchable":true,
+         "task_kind":"ship","context":"The gate drops the last chunk."},
+        {"id":"c","repo":"sample","title":"A scout","reason":"","dispatchable":true,
+         "task_kind":"scout","context":null}
+      ]' "$data" > "$data.tmp" && mv "$data.tmp" "$data"
+  run_board "$home" build "$data" >/dev/null \
+    || fail "an omitted, ship, and scout charted task_kind was refused"
+  extract_payload "$home/.lavish/bearings-board.html" | jq -e '
+    ([.charted[] | .task_kind // "(none)"]) == ["(none)", "ship", "scout"]
+      and (.charted[1].context == "The gate drops the last chunk.")
+  ' >/dev/null || fail "the built board did not carry the task kinds and context it was given"
+  pass "charted task_kind and context are optional and reach the built board"
+}
+
+# --- the home-local theme and logo ------------------------------------------
+
+test_a_board_with_no_home_theme_keeps_the_tracked_defaults() {
+  local home data board
+  home=$(make_home theme-absent)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  board="$home/.lavish/bearings-board.html"
+  run_board "$home" build "$data" >/dev/null || fail "a board with no home theme did not build"
+  grep -q '__FM_BEARINGS_BOARD_' "$board" \
+    && fail "a slot placeholder survived into the published board"
+  grep -q 'id="fm-board-theme"' "$board" \
+    || fail "the published board lost its theme block"
+  grep -q -- '--bb-accent:' "$board" \
+    || fail "the published board lost the tracked default tokens"
+  pass "a board with no home theme publishes the tracked neutral defaults"
+}
+
+test_a_home_theme_and_logo_are_inlined_into_the_board() {
+  local home data board
+  home=$(make_home theme-present)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  board="$home/.lavish/bearings-board.html"
+  mkdir -p "$home/config"
+  printf ':root { --bb-accent: #123456; --bb-dark: #0a0b0c; }\n' > "$home/config/board-theme.css"
+  printf '<svg viewBox="0 0 10 10"><title>house mark</title></svg>\n' > "$home/config/board-logo.svg"
+  run_board "$home" build "$data" >/dev/null || fail "a board with a home theme did not build"
+  grep -q '__FM_BEARINGS_BOARD_' "$board" \
+    && fail "a slot placeholder survived into the themed board"
+  grep -q -- '--bb-accent: #123456' "$board" \
+    || fail "the home theme did not reach the published board"
+  grep -q 'house mark' "$board" \
+    || fail "the home logo did not reach the published board"
+  # the override must land AFTER the tracked defaults, or it cannot win
+  [ "$(grep -n 'id="fm-board-theme"' "$board" | cut -d: -f1)" \
+    -lt "$(grep -n -- '--bb-accent: #123456' "$board" | cut -d: -f1)" ] \
+    || fail "the home theme was inlined before the tracked defaults"
+  pass "a home theme and logo are inlined into the published board"
+}
+
+test_build_refuses_a_theme_or_logo_that_cannot_be_inlined_safely() {
+  local home data rc out
+  home=$(make_home theme-unsafe)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  mkdir -p "$home/config"
+
+  printf ':root{}</style><script>alert(1)</script>\n' > "$home/config/board-theme.css"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a theme that ends the style block early was accepted"
+  assert_contains "$out" "</style" "the theme refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused theme still produced a board"
+  rm -f "$home/config/board-theme.css"
+
+  printf 'not an svg at all\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo that is not an SVG was accepted"
+  assert_contains "$out" "not an SVG" "the logo refusal did not say why: $out"
+
+  printf '<svg><script>alert(1)</script></svg>\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying a script was accepted"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  # Script tags are not the only way an inlined SVG runs in the board document,
+  # which also holds the payload and the answer-queueing bridge.
+  printf '<svg onload="alert(1)"><path d="M0 0"/></svg>\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying an inline event handler was accepted"
+  assert_contains "$out" "event handler" "the handler refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg><image href="x"\n onerror="alert(1)"/></svg>\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying a nested event handler was accepted"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg><rect/><animate attributeName="href" to="javascript_url"/></svg>\n' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying a SMIL animation element was accepted"
+  assert_contains "$out" "animation element" "the animation refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg><set attributeName="href" to="x"/></svg>\n' > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo carrying a SMIL set element was accepted"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  # An exporter's pretty-printed output breaks tags and attributes over several
+  # lines; the browser runs it just the same, so the refusal must too.
+  printf '<svg\n  onload\n  ="alert(1)">\n  <path d="M0 0"/>\n</svg>\n' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo whose event handler spans lines was accepted"
+  assert_contains "$out" "event handler" "the handler refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '<svg>\n  <rect/>\n  <animate\n    attributeName="href"\n    to="x"/>\n</svg>\n' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo whose animation element spans lines was accepted"
+  assert_contains "$out" "animation element" "the animation refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  # HTML smuggled through SVG still runs in the board document, and a browser
+  # resolves character references before it decides a URL's scheme.
+  printf '%s\n' '<svg><foreignObject><iframe srcdoc="&lt;script&gt;parent.alert(1)&lt;/script&gt;"/></foreignObject></svg>' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo embedding an HTML srcdoc iframe was accepted"
+  assert_contains "$out" "HTML-embedding element" "the embedding refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '%s\n' '<svg><a href="&#106;avascript:alert(1)"><rect/></a></svg>' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo with an entity-encoded javascript: URL was accepted"
+  assert_contains "$out" "javascript:" "the javascript refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '%s\n' '<svg><a href="java&NewLine;script:alert(1)"><rect/></a></svg>' \
+    > "$home/config/board-logo.svg"
+  set +e; out=$(run_board "$home" build "$data" 2>&1); rc=$?; set -e
+  [ "$rc" -ne 0 ] || fail "a logo whose javascript: URL is split by a character reference was accepted"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused logo still produced a board"
+
+  printf '%s\n' '<svg><text>Tom &amp; Jerry&#39;s</text><path d="M0 0"/></svg>' \
+    > "$home/config/board-logo.svg"
+  run_board "$home" build "$data" >/dev/null \
+    || fail "a logo whose only entities are ordinary text was refused"
+  assert_present "$home/.lavish/bearings-board.html" "the accepted logo produced no board"
+  rm -f "$home/.lavish/bearings-board.html"
+
+  printf '<svg\n  xmlns="http://www.w3.org/2000/svg"\n  viewBox="0 0 10 10">\n  <title>house mark</title>\n</svg>\n' \
+    > "$home/config/board-logo.svg"
+  run_board "$home" build "$data" >/dev/null \
+    || fail "a pretty-printed but harmless logo was refused"
+  assert_present "$home/.lavish/bearings-board.html" "the accepted logo produced no board"
+  rm -f "$home/config/board-logo.svg"
+  pass "build refuses a theme or logo that cannot be inlined safely"
+}
+
+test_build_refuses_a_template_without_a_theme_or_logo_slot() {
+  local home data rc out
+  home=$(make_home badthemeslot)
+  data="$home/payload.json"
+  write_valid_payload "$data"
+  sed '/__FM_BEARINGS_BOARD_THEME__/d' \
+    "$ROOT/.agents/skills/bearings/assets/board-template.html" > "$home/no-theme.html"
+  set +e
+  out=$(FM_BEARINGS_BOARD_TEMPLATE="$home/no-theme.html" run_board "$home" build "$data" 2>&1)
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "a template with no theme slot was accepted"
+  assert_contains "$out" "theme slot" "the theme-slot refusal did not say why: $out"
+
+  sed '/__FM_BEARINGS_BOARD_LOGO__/d' \
+    "$ROOT/.agents/skills/bearings/assets/board-template.html" > "$home/no-logo.html"
+  set +e
+  out=$(FM_BEARINGS_BOARD_TEMPLATE="$home/no-logo.html" run_board "$home" build "$data" 2>&1)
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "a template with no logo slot was accepted"
+  assert_contains "$out" "logo slot" "the logo-slot refusal did not say why: $out"
+  assert_absent "$home/.lavish/bearings-board.html" "a refused template still produced a board"
+  pass "build refuses a template without a theme or a logo slot"
 }
 
 test_build_injects_binds_then_arms() {
@@ -780,6 +981,11 @@ test_build_refuses_a_nondecision_reconcile_value() {
 test_path_is_stable_and_home_scoped
 test_build_refuses_malformed_payloads_before_touching_the_board
 test_charted_kind_is_optional_and_accepts_both_values
+test_charted_task_kind_and_context_are_optional_and_reach_the_board
+test_a_board_with_no_home_theme_keeps_the_tracked_defaults
+test_a_home_theme_and_logo_are_inlined_into_the_board
+test_build_refuses_a_theme_or_logo_that_cannot_be_inlined_safely
+test_build_refuses_a_template_without_a_theme_or_logo_slot
 test_build_injects_binds_then_arms
 test_registration_cannot_consume_before_any_origin_binding
 test_build_does_not_bind_or_arm_when_session_start_fails

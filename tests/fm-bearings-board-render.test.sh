@@ -58,8 +58,8 @@ SH
 
 # Build the board from <underway-json> plus <charted-json> and return what the
 # renderer produced.
-render_board() {  # <home> <underway-json> <charted-json> [charted_more] [charted_warning_more]
-  local home=$1 underway=$2 charted=$3 more=${4:-0} warning_more=${5:-0} data="$1/payload.json"
+render_board() {  # <home> <underway-json> <charted-json> [charted_more] [charted_warning_more] [steps-json]
+  local home=$1 underway=$2 charted=$3 more=${4:-0} warning_more=${5:-0} steps=${6:-[]} data="$1/payload.json"
   jq -n --argjson underway "$underway" --argjson charted "$charted" \
     --argjson more "$more" --argjson warning_more "$warning_more" '{
     schema:"fm-bearings-board.v1", home:"render-home", generated:"2026-08-26T00:00Z",
@@ -69,8 +69,23 @@ render_board() {  # <home> <underway-json> <charted-json> [charted_more] [charte
     FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
     FM_PROCEVENT_CLAIM_ROOT="$home/procevent-claims" \
     "$BOARD" build "$data" >/dev/null || fail "the board did not build"
-  node "$HARNESS" "$home/.lavish/bearings-board.html" \
+  node "$HARNESS" "$home/.lavish/bearings-board.html" "$steps" \
     || fail "the built board could not be rendered"
+}
+
+# Build a two-row queue and replay <steps-json> against the board's own
+# handlers, returning what the renderer produced plus what it queued.
+render_removal_steps() {  # <home> <steps-json>
+  render_board "$1" '[]' '[
+    {"id":"alpha-1","repo":"sample","title":"Alpha","reason":"","dispatchable":true},
+    {"id":"beta-2","repo":"sample","title":"Beta","reason":"","dispatchable":true}
+  ]' 0 0 "$2"
+}
+
+# The one remove.charted answer the captain would actually send.
+queued_removal() {  # <render-json>
+  printf '%s' "$1" | jq -r '[.queued[] | select(.queueKey == "remove.charted")] as $q
+    | if ($q | length) == 1 then $q[0].answer else "expected exactly one, got \($q | length)" end'
 }
 
 # Build the board from <charted-json> alone and return what the renderer produced.
@@ -78,8 +93,10 @@ render() {  # <home> <charted-json> [charted_more] [charted_warning_more]
   render_board "$1" '[]' "$2" "${3:-0}" "${4:-0}"
 }
 
-charted_next_count() {  # <render-json>
-  printf '%s' "$1" | jq -r '.stats[] | select(.label == "charted next") | .n'
+# The band's third metric counts the queued work that is ready to dispatch
+# right now; alarms are never dispatchable, so they can never reach it.
+ready_count() {  # <render-json>
+  printf '%s' "$1" | jq -r '.stats[] | select(.label == "ready to dispatch") | .n'
 }
 
 test_a_warning_row_reads_as_a_repair_not_as_queued_work() {
@@ -111,11 +128,13 @@ test_warnings_are_excluded_from_the_charted_next_count() {
     {"id":"warn-one","repo":"sample","title":"Home unreadable","reason":"current home state unavailable","dispatchable":false,"kind":"warning"},
     {"id":"warn-two","repo":"sample","title":"Inventory mismatch","reason":"main inventory","dispatchable":false,"kind":"warning"}
   ]')
-  [ "$(charted_next_count "$out")" = 1 ] \
-    || fail "the charted next tally counted alarms as queued work: $out"
-  printf '%s' "$out" | jq -e '(.charted | length) == 3' >/dev/null \
-    || fail "excluding warnings from the count also dropped their rows: $out"
-  pass "the charted next count counts queued work only, and still renders warnings"
+  [ "$(ready_count "$out")" = 1 ] \
+    || fail "the ready tally counted alarms as queued work: $out"
+  printf '%s' "$out" | jq -e '
+    (.charted | length) == 3
+      and ([.groups[] | .meta] == ["1 queued · 1 ready"])
+  ' >/dev/null || fail "excluding warnings from the counts also dropped their rows: $out"
+  pass "the band and group counts count queued work only, and still render warnings"
 }
 
 test_a_board_of_only_warnings_still_reports_nothing_queued() {
@@ -124,7 +143,7 @@ test_a_board_of_only_warnings_still_reports_nothing_queued() {
   out=$(render "$home" '[
     {"id":"warn-only","repo":"sample","title":"Home unreadable","reason":"current home state unavailable","dispatchable":false,"kind":"warning"}
   ]')
-  [ "$(charted_next_count "$out")" = 0 ] \
+  [ "$(ready_count "$out")" = 0 ] \
     || fail "a warning-only board claimed queued work: $out"
   printf '%s' "$out" | jq -e '
     (.empty | length) == 1 and (.empty[0] | test("Nothing is queued"))
@@ -139,7 +158,7 @@ test_omitted_warnings_never_count_as_more_queued() {
   out=$(render "$home" '[
     {"id":"warn-visible","repo":"sample","title":"Home unreadable","reason":"current home state unavailable","dispatchable":false,"kind":"warning"}
   ]' 0 1)
-  [ "$(charted_next_count "$out")" = 0 ] \
+  [ "$(ready_count "$out")" = 0 ] \
     || fail "an omitted warning was counted as queued work: $out"
   printf '%s' "$out" | jq -e '
     (.empty | length) == 1 and (.empty[0] | test("Nothing is queued"))
@@ -156,13 +175,69 @@ test_an_omitted_kind_keeps_the_existing_queued_rendering() {
     {"id":"with-reason","repo":"sample","title":"With reason","reason":"blocked on prep","dispatchable":true},
     {"id":"no-reason","repo":"sample","title":"No reason","reason":"","dispatchable":true}
   ]' 2)
-  [ "$(charted_next_count "$out")" = 4 ] \
-    || fail "an omitted kind changed the charted next tally: $out"
+  [ "$(ready_count "$out")" = 2 ] \
+    || fail "an omitted kind changed the ready tally: $out"
   printf '%s' "$out" | jq -e '
     ([.charted[0].badges[] | .text] == ["waiting"])
       and (.charted[1].badges == [])
   ' >/dev/null || fail "an omitted kind changed the existing queued badges: $out"
   pass "an omitted kind renders exactly as queued work always did"
+}
+
+# --- removing from the queue -------------------------------------------------
+# Removal is the board's one destructive path: the queued remove.charted answer
+# is the only thing that decides which backlog items firstmate drops, so every
+# assertion below is on that answer rather than on board-local state.
+
+test_striking_a_row_queues_nothing_until_the_captain_sends() {
+  local home out
+  home=$(make_home remove-unsent)
+  out=$(render_removal_steps "$home" '[{"op":"remove","id":"alpha-1"}]')
+  printf '%s' "$out" | jq -e '.queued == []' >/dev/null \
+    || fail "striking a row queued an answer before the captain sent it: $out"
+  pass "striking a row queues nothing until the captain sends"
+}
+
+test_queue_removals_hands_firstmate_every_struck_id() {
+  local home out
+  home=$(make_home remove-send)
+  out=$(render_removal_steps "$home" '[
+    {"op":"remove","id":"alpha-1"},{"op":"remove","id":"beta-2"},{"op":"queue"}]')
+  [ "$(queued_removal "$out")" = "alpha-1,beta-2" ] \
+    || fail "the queued removal did not carry both struck ids: $out"
+  pass "queue removals hands firstmate every struck id"
+}
+
+test_undo_after_queueing_retracts_the_id_from_the_queued_removal() {
+  local home out
+  home=$(make_home remove-undo-after-send)
+  out=$(render_removal_steps "$home" '[
+    {"op":"remove","id":"alpha-1"},{"op":"remove","id":"beta-2"},{"op":"queue"},
+    {"op":"undo","id":"beta-2"}]')
+  [ "$(queued_removal "$out")" = "alpha-1" ] \
+    || fail "undo left the already-queued removal carrying the retracted id: $out"
+  pass "undo after queueing retracts the id from the queued removal"
+}
+
+test_undoing_every_removal_after_queueing_queues_an_explicit_nothing() {
+  local home out
+  home=$(make_home remove-undo-all)
+  out=$(render_removal_steps "$home" '[
+    {"op":"remove","id":"alpha-1"},{"op":"queue"},{"op":"undo","id":"alpha-1"}]')
+  [ "$(queued_removal "$out")" = "" ] \
+    || fail "emptying the removal list left an id queued for deletion: $out"
+  pass "undoing every removal after queueing queues an explicit nothing"
+}
+
+test_editing_the_list_after_queueing_ends_on_the_last_list() {
+  local home out
+  home=$(make_home remove-re-edit)
+  out=$(render_removal_steps "$home" '[
+    {"op":"remove","id":"alpha-1"},{"op":"remove","id":"beta-2"},{"op":"queue"},
+    {"op":"undo","id":"alpha-1"},{"op":"remove","id":"alpha-1"}]')
+  [ "$(queued_removal "$out")" = "beta-2,alpha-1" ] \
+    || fail "the queued removal did not settle on the captain's last list: $out"
+  pass "editing the list after queueing ends on the last list"
 }
 
 test_an_underway_row_leads_with_the_task_name_and_keeps_its_run_status() {
@@ -228,6 +303,95 @@ test_charted_rows_without_a_filed_date_follow_the_dated_rows_in_payload_order() 
   pass "charted rows with no filed date follow the dated rows in payload order"
 }
 
+test_a_queue_row_badges_its_task_kind_and_opens_a_detail_panel() {
+  local home out
+  home=$(make_home queue-kind)
+  out=$(render "$home" '[
+    {"id":"ship-one","repo":"sample","title":"Ship the fix","reason":"","dispatchable":true,
+     "filed":"2026-08-14","task_kind":"ship","context":"The push gate drops the last chunk."},
+    {"id":"scout-one","repo":"sample","title":"Investigate the drop","reason":"waiting on the trace",
+     "dispatchable":false,"filed":"2026-08-10","task_kind":"scout"}
+  ]')
+  printf '%s' "$out" | jq -e '
+    (.charted[0]
+      | [.badges[] | .text] == ["ship"]
+        and .removable == true
+        and (.facts.Filed == "2026-08-14")
+        and (.facts.Delivers | test("pull request"))
+        and (.facts.Project == "sample")
+        and (.facts.Context == "The push gate drops the last chunk.")
+        and (.facts["Task record"] == "ship-one")
+        and (.facts | has("Blocked") | not))
+    and (.charted[1]
+      | [.badges[] | .text] == ["scout", "waiting"]
+        and (.facts.Delivers | test("report in the task record"))
+        and (.facts.Blocked == "waiting on the trace"))
+  ' >/dev/null || fail "a queue row did not badge its kind or open its detail: $out"
+  pass "a queue row badges its task kind and opens filed, delivers, context and blocker"
+}
+
+test_a_queue_row_without_a_task_kind_shows_no_kind_badge() {
+  local home out
+  home=$(make_home queue-kindless)
+  out=$(render "$home" '[
+    {"id":"kindless","repo":"sample","title":"Unclassified work","reason":"","dispatchable":true}
+  ]')
+  printf '%s' "$out" | jq -e '
+    (.charted | length) == 1
+      and (.charted[0] | .badges == [] and .removable == true
+        and (.facts | has("Delivers") | not)
+        and (.facts | has("Context") | not))
+  ' >/dev/null || fail "an absent task kind still produced a badge or a delivers row: $out"
+  pass "a queue row with no task kind shows no kind badge and no delivers row"
+}
+
+test_queue_rows_group_by_project() {
+  local home out
+  home=$(make_home queue-groups)
+  out=$(render "$home" '[
+    {"id":"a1","repo":"alpha","title":"Alpha newest","reason":"","dispatchable":true,"filed":"2026-08-20"},
+    {"id":"b1","repo":"beta","title":"Beta only","reason":"","dispatchable":false,"filed":"2026-08-18"},
+    {"id":"a2","repo":"alpha","title":"Alpha older","reason":"","dispatchable":true,"filed":"2026-08-02"}
+  ]')
+  printf '%s' "$out" | jq -e '
+    ([.groups[] | .name] == ["alpha", "beta"])
+      and (.groups[0] | .rows == ["Alpha newest", "Alpha older"] and .meta == "2 queued · 2 ready")
+      and (.groups[1] | .rows == ["Beta only"] and .meta == "1 queued · 0 ready")
+  ' >/dev/null || fail "queue rows did not group by project: $out"
+  pass "queue rows group by project, newest filed first inside each group"
+}
+
+test_a_warning_row_is_flat_with_no_panel_or_removal() {
+  local home out
+  home=$(make_home warning-flat)
+  out=$(render "$home" '[
+    {"id":"main-inventory","repo":"sample","title":"Main inventory integrity",
+     "reason":"main inventory","dispatchable":false,"kind":"warning"}
+  ]')
+  printf '%s' "$out" | jq -e '
+    (.charted[0]
+      | .removable == false and .facts == {}
+        and (.sub | test("main inventory")))
+  ' >/dev/null || fail "an alarm offered a detail panel or a removal: $out"
+  pass "an alarm stays a flat row with no detail panel and nothing to remove"
+}
+
+test_the_band_reports_the_four_captain_facing_metrics() {
+  local home out
+  home=$(make_home band-metrics)
+  out=$(render_board "$home" '[
+    {"id":"w1","repo":"sample","name":"Live work","state":"working","kind":"ship","doing":"tests running"}
+  ]' '[
+    {"id":"ready-one","repo":"sample","title":"Ready","reason":"","dispatchable":true},
+    {"id":"waiting-one","repo":"sample","title":"Waiting","reason":"blocked","dispatchable":false}
+  ]')
+  printf '%s' "$out" | jq -e '
+    [.stats[] | .label] == ["need you", "underway", "ready to dispatch", "landed"]
+      and [.stats[] | .n] == [0, 1, 1, 0]
+  ' >/dev/null || fail "the band did not report the four captain-facing metrics: $out"
+  pass "the band reports need you, underway, ready to dispatch and landed"
+}
+
 test_an_underway_row_leads_with_the_task_name_and_keeps_its_run_status
 test_an_underway_identifier_label_is_not_replaced_by_run_status
 test_charted_next_reads_newest_filed_first
@@ -237,3 +401,13 @@ test_warnings_are_excluded_from_the_charted_next_count
 test_a_board_of_only_warnings_still_reports_nothing_queued
 test_omitted_warnings_never_count_as_more_queued
 test_an_omitted_kind_keeps_the_existing_queued_rendering
+test_the_band_reports_the_four_captain_facing_metrics
+test_a_queue_row_badges_its_task_kind_and_opens_a_detail_panel
+test_a_queue_row_without_a_task_kind_shows_no_kind_badge
+test_queue_rows_group_by_project
+test_a_warning_row_is_flat_with_no_panel_or_removal
+test_striking_a_row_queues_nothing_until_the_captain_sends
+test_queue_removals_hands_firstmate_every_struck_id
+test_undo_after_queueing_retracts_the_id_from_the_queued_removal
+test_undoing_every_removal_after_queueing_queues_an_explicit_nothing
+test_editing_the_list_after_queueing_ends_on_the_last_list
